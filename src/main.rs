@@ -622,6 +622,7 @@ int main (int argc, char** argv) {{
         .arg("-Wno-unused-function")
         .arg("-Wno-unused-parameter")
         .arg("-Werror")
+        .arg("-g")
         .spawn()
         .expect("Could not launch gcc")
         .wait()

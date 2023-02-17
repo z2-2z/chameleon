@@ -214,15 +214,22 @@ impl<'a> Scanner<'a> {
     }
     
     /// Check if the view at the current position contains the string `buf`
-    fn peek(&self, buf: &str) -> bool {
+    fn peek(&self, buf: &'static str) -> bool {
         // we only compare against ASCII strings so buf.len() is fine
         self.view.slice(self.cursor, buf.len()) == buf
     }
     
-    /// Increment the cursor
+    /// Advance the cursor
     fn forward(&mut self, len: usize) {
         if self.cursor < self.view.len() {
             self.cursor += len;
+        }
+    }
+    
+    /// Move cursor back
+    fn revert(&mut self, len: usize) {
+        if len <= self.cursor {
+            self.cursor -= len;
         }
     }
     
@@ -246,25 +253,6 @@ impl<'a> Scanner<'a> {
         skipped
     }
     
-    /// Execute a peek after skipping the content according to `F` like in `skip()` above
-    /// but without advancing the cursor
-    fn peek_after<F>(&self, func: &mut F, buf: &str) -> bool
-    where
-        F: FnMut(&str) -> bool,
-    {
-        let mut skipped = 0;
-        
-        while self.cursor + skipped < self.view.len() {
-            if func(self.view.slice(self.cursor + skipped, 1)) {
-                skipped += 1;
-            } else {
-                break;
-            }
-        }
-
-        self.view.slice(self.cursor + skipped, buf.len()) == buf
-    }
-    
     /// Run a given function that gets a grapheme as input and outputs
     /// a boolean on the grapheme at the current cursor position
     fn check<F>(&mut self, func: &mut F) -> bool
@@ -279,7 +267,7 @@ impl<'a> Scanner<'a> {
     }
     
     /// Assert that the source contains `buf` at the current cursor position
-    fn expect(&mut self, buf: &str) -> Result<(), LexerError> {
+    fn expect(&mut self, buf: &'static str) -> Result<(), LexerError> {
         if self.peek(buf) {
             self.forward(buf.len());
             Ok(())
@@ -722,8 +710,8 @@ impl<'a> Lexer<'a> {
                 let (char_start, char_end) = self.parse_char_literal()?;
                 
                 // Is this a char range ?
-                if self.scanner.peek_after(&mut is_whitespace_nonl, keywords::RANGE_OP) {
-                    self.scanner.skip(&mut is_whitespace_nonl);
+                let skipped = self.scanner.skip(&mut is_whitespace_nonl);
+                if self.scanner.peek(keywords::RANGE_OP) {
                     self.scanner.forward(keywords::RANGE_OP.len());
                     self.scanner.skip(&mut is_whitespace_nonl);
                     
@@ -734,6 +722,7 @@ impl<'a> Lexer<'a> {
                         SourceRange::new(limit_start, limit_end),
                     ));
                 } else {
+                    self.scanner.revert(skipped);
                     tokens.push(Token::Character(SourceRange::new(char_start, char_end)));
                 }
             }
@@ -750,8 +739,8 @@ impl<'a> Lexer<'a> {
                 };
                 
                 // Is this a number range ?
-                if self.scanner.peek_after(&mut is_whitespace_nonl, keywords::RANGE_OP) {
-                    self.scanner.skip(&mut is_whitespace_nonl);
+                let skipped = self.scanner.skip(&mut is_whitespace_nonl);
+                if self.scanner.peek(keywords::RANGE_OP) {
                     self.scanner.forward(keywords::RANGE_OP.len());
                     self.scanner.skip(&mut is_whitespace_nonl);
                     
@@ -772,16 +761,18 @@ impl<'a> Lexer<'a> {
                 }
                 // This is a single number
                 else {
+                    self.scanner.revert(skipped);
                     tokens.push(Token::Integer(SourceRange::new(number_start, number_end)));
                 }
             }
             
             // If we have a ',', parse again
-            if self.scanner.peek_after(&mut is_whitespace_nonl, keywords::NUMBERSET_DELIM) {
-                self.scanner.skip(&mut is_whitespace_nonl);
+            let skipped = self.scanner.skip(&mut is_whitespace_nonl);
+            if self.scanner.peek(keywords::NUMBERSET_DELIM) {
                 self.scanner.forward(keywords::NUMBERSET_DELIM.len());
                 self.scanner.skip(&mut is_whitespace_nonl);
             } else {
+                self.scanner.revert(skipped);
                 break;
             }
         }
