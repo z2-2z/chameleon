@@ -3,21 +3,6 @@ use unicode_segmentation::UnicodeSegmentation;
 /// Type alias that represents a slice of the SourceView
 pub type SourceRange = std::ops::Range<usize>;
 
-/// Trait that provides a new() method for Range
-pub trait NewRange<Idx> {
-    fn new(start: Idx, end: Idx) -> Self;
-}
-
-impl<Idx> NewRange<Idx> for std::ops::Range<Idx> {
-    fn new(start: Idx, end: Idx) -> Self {
-        Self {
-            start,
-            end
-        }
-    }
-}
-
-
 #[inline]
 fn is_linebreak(s: &str) -> bool {
     #[cfg(target_os = "windows")]
@@ -37,53 +22,35 @@ fn is_linebreak(s: &str) -> bool {
 /// chars instead of raw bytes.
 pub struct SourceView {
     content: String,
-    length: usize,
+    graphemes: Vec<usize>,
 }
 impl SourceView {
-    #[cfg(any(test, fuzzing))]
     pub fn new(content: &str) -> Self {
         Self {
+            graphemes: UnicodeSegmentation::grapheme_indices(content, true).map(|(idx, _)| idx).collect(),
             content: content.to_string(),
-            length: UnicodeSegmentation::graphemes(content, true).count(),
         }
     }
     
     pub fn from_file(file: &str) -> Self {
         let content = std::fs::read(file).expect("Cannot read from file");
-        let content = String::from_utf8(content).expect("Grammar is not valid UTF-8");
-        let length = UnicodeSegmentation::graphemes(content.as_str(), true).count();
-        
-        Self {
-            content,
-            length,
-        }
+        let content = std::str::from_utf8(&content).expect("Grammar is not valid UTF-8");
+        SourceView::new(content)
     }
     
     pub fn len(&self) -> usize {
-        self.length
+        self.graphemes.len()
     }
     
-    /// Return a substring of the file with `len` valid UTF-8 chars starting at character index `start`
-    pub fn slice(&self, start: usize, len: usize) -> &str {
-        if len == 0 {
-            return "";
-        }
-        
-        let mut iter = UnicodeSegmentation::grapheme_indices(self.content.as_str(), true).skip(start);
-        
-        let start_idx = if let Some((offset, _)) = iter.next() {
-            offset
-        } else {
-            return "";
-        };
-        
-        let end_idx = if let Some((offset, _)) = iter.skip(len - 1).next() {
-            offset
+    /// Return a substring of the file with `len` graphemes starting at character index `pos`
+    pub fn slice(&self, pos: usize, len: usize) -> &str {
+        let start = self.graphemes[pos];
+        let end = if pos + len < self.graphemes.len() {
+            self.graphemes[pos + len]
         } else {
             self.content.len()
         };
-        
-        &self.content[start_idx..end_idx]
+        &self.content[start..end]
     }
     
     /// Convenience function that returns a slice from a SourceRange
@@ -93,12 +60,15 @@ impl SourceView {
     
     /// Return line number and column for the grapheme at index `pos`
     pub fn lineinfo(&self, pos: usize) -> (usize, usize) {
+        let elems = std::cmp::min(self.len(), pos + 1);
         let mut lineno = 1;
         let mut last_col = 1;
         let mut col = 1;
         
-        for grapheme in UnicodeSegmentation::graphemes(self.content.as_str(), true).take(pos + 1) {
-            if is_linebreak(grapheme) {
+        for i in 0..elems {
+            let s = self.slice(i, 1);
+            
+            if is_linebreak(s) {
                 lineno += 1;
                 last_col = col;
                 col = 0;
@@ -128,12 +98,14 @@ impl SourceView {
             return None;
         }
         
-        let mut graphemes = UnicodeSegmentation::grapheme_indices(self.content.as_str(), true);
+        let mut indices = 0..self.graphemes.len();
         
         // Find start of line
         if lineno < req_line {
-            while let Some((_, grapheme)) = graphemes.next() {
-                if is_linebreak(grapheme) {
+            while let Some(idx) = indices.next() {
+                let s = self.slice(idx, 1);
+                
+                if is_linebreak(s) {
                     lineno += 1;
                 }
                 
@@ -142,9 +114,10 @@ impl SourceView {
                 }
             }
             
-            match graphemes.next() {
-                Some((offset, s)) => {
-                    line_start = offset;
+            match indices.next() {
+                Some(idx) => {
+                    line_start = self.graphemes[idx];
+                    let s = self.slice(idx, 1);
                     
                     // If the requested line is empty, return an empty string
                     if is_linebreak(s) {
@@ -158,14 +131,16 @@ impl SourceView {
         }
         
         // Find end of line
-        while let Some((offset, grapheme)) = graphemes.next() {
-            if is_linebreak(grapheme) {
-                line_end = offset;
+        while let Some(idx) = indices.next() {
+            let s = self.slice(idx, 1);
+            
+            if is_linebreak(s) {
+                line_end = self.graphemes[idx];
                 break;
             }
         }
         
-        if line_end == 0 && graphemes.next().is_none() {
+        if line_end == 0 && indices.next().is_none() {
             line_end = self.content.len();
         }
         

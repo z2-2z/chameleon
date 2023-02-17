@@ -1,5 +1,6 @@
 use crate::frontend::keywords;
-use crate::frontend::source_view::{SourceView, SourceRange, NewRange};
+use crate::frontend::source_view::{SourceView, SourceRange};
+use crate::frontend::range::NewRange;
 
 /// All the errors that can occur during lexing
 #[derive(Debug)]

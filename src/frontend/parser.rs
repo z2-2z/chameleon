@@ -11,9 +11,10 @@ use crate::{
     },
     frontend::{
         lexer::{Token, TokenId},
-        source_view::{SourceRange, SourceView, NewRange},
+        source_view::{SourceRange, SourceView},
         keywords,
         bitpattern::FromBitPattern,
+        range::NewRange,
     },
 };
 use std::ops::Range;
