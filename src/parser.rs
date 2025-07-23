@@ -193,7 +193,6 @@ impl<'a> GrammarParser<'a> {
     fn parse_line(&mut self, line: &'a [u8], lineno: usize) -> Result<()> {
         let mut helper = ParserHelper::new(line);
         
-        // Each iteration parses one rule definition
         while helper.has_more_data() {
             helper.skip(is_whitespace);
             
@@ -273,13 +272,21 @@ impl<'a> GrammarParser<'a> {
             helper.skip(is_whitespace);
             
             match helper.peek(1) {
-                None => return self.syntax_error(
-                    "Expected the right-hand side of a rule",
-                    lineno,
-                    helper,
-                    line,
-                    1,
-                ),
+                None => if rhs_count == 0 {
+                    return self.syntax_error(
+                        "Expected the right-hand side of a rule",
+                        lineno,
+                        helper,
+                        line,
+                        1,
+                    );
+                } else {
+                    self.nodes.push(SyntaxNode::end_of_rule(
+                        lineno,
+                        helper.column(),
+                    ));
+                    break;
+                },
                 Some(START_COMMENT) => if rhs_count == 0 {
                     return self.syntax_error(
                         "No elements on the right-hand side of this rule",
@@ -319,14 +326,29 @@ impl<'a> GrammarParser<'a> {
                     helper.advance(1);
                     break;
                 },
-                _ => {
-                    todo!("non-terminal");
-                },
+                _ => self.parse_rhs_element(helper, line, lineno)?,
             }
             
             rhs_count += 1;
         }
         
+        Ok(())
+    }
+    
+    fn parse_rhs_element(&mut self, helper: &mut ParserHelper<'a>, line: &'a [u8], lineno: usize) -> Result<()> {
+        // string
+        // char
+        // set
+        // block
+        // non-terminal
+        
+        match helper.peek(1) {
+            Some(_) => todo!(),
+            None => todo!(),
+        }
+        
+        todo!();
+                
         Ok(())
     }
     
@@ -348,6 +370,6 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        parser.parse("   ASDF-ASDF -> ; asdf\nasdf asd fasd fasd fsadf ").unwrap();
+        parser.parse("   ASDF-ASDF -> #\nasdf asd fasd fasd fsadf ").unwrap();
     }
 }

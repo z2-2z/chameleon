@@ -18,6 +18,9 @@ Capabilities:
 3. Mutate
 4. Grammar formatter
 5. Just translate grammar to C code
+6. Merge grammars from different formats / multiple files into one
+    - make it so that merge operation is projection and merging
+      the same ruleset multiple times is no problem
 
 Interface:
 1. Generate C code
