@@ -13,37 +13,69 @@ fn is_whitespace(c: u8) -> bool {
     c == b' ' || c == b'\t'
 }
 
-struct ParserHelper<'a> {
-    buffer: &'a [u8],
-    cursor: usize,
+#[derive(Error, Debug)]
+pub struct ParserError {
+    description: String,
+    lineno: usize,
+    column: usize,
+    line: Vec<u8>,
+    region: Range<usize>,
 }
 
-impl<'a> ParserHelper<'a> {
-    fn new(buffer: &'a [u8]) -> Self {
+impl std::fmt::Display for ParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.region.len() > 1 {
+            writeln!(f, "In line {} columns {}-{}:", self.lineno, self.column, self.column + self.region.len() - 1)?;
+        } else {
+            writeln!(f, "In line {} column {}:", self.lineno, self.column)?;
+        }
+        writeln!(f, "> ")?;
+        writeln!(f, "> {}", String::from_utf8_lossy(&self.line))?;
+        writeln!(f, "> {0:1$}{2:^<3$}", "", self.region.start, "^", self.region.len())?;
+        writeln!(f, "{}", self.description)?;
+        Ok(())
+    }
+}
+
+struct LineParser<'a> {
+    line: &'a [u8],
+    cursor: usize,
+    offset: usize,
+    lineno: usize,
+}
+
+impl<'a> LineParser<'a> {
+    fn new(line: &'a [u8], lineno: usize, offset: usize) -> Self {
         Self {
-            buffer,
+            line,
             cursor: 0,
+            offset,
+            lineno,
         }
     }
     
+    fn line(&self) -> &[u8] {
+        &self.line
+    }
+    
+    fn lineno(&self) -> usize {
+        self.lineno
+    }
+    
     fn go_to_end(&mut self) {
-        self.cursor = self.buffer.len();
+        self.cursor = self.line.len();
     }
     
     fn has_more_data(&self) -> bool {
-        self.cursor < self.buffer.len()
+        self.cursor < self.line.len()
     }
     
-    fn position(&self) -> usize {
-        self.cursor
-    }
-    
-    fn column(&self) -> usize {
-        self.cursor + 1
+    fn offset(&self) -> usize {
+        self.offset + self.cursor
     }
     
     fn skip(&mut self, func: FilterFunc) {
-        while let Some(c) = self.buffer.get(self.cursor) {
+        while let Some(c) = self.line.get(self.cursor) {
             if func(*c) {
                 self.cursor += 1;
             } else {
@@ -53,7 +85,7 @@ impl<'a> ParserHelper<'a> {
     }
     
     fn peek(&self, len: usize) -> Option<&'a [u8]> {
-        self.buffer.get(self.cursor..self.cursor + len)
+        self.line.get(self.cursor..self.cursor + len)
     }
     
     fn advance(&mut self, len: usize) {
@@ -70,14 +102,14 @@ impl<'a> ParserHelper<'a> {
     }
     
     fn data(&self) -> &'a [u8] {
-        &self.buffer[self.cursor..]
+        &self.line[self.cursor..]
     }
     
-    fn collect(&self, func: FilterFunc) -> &'a [u8] {
+    fn peek_filter(&self, func: FilterFunc) -> &'a [u8] {
         let mut len = 0;
         let start = self.cursor;
         
-        while let Some(c) = self.buffer.get(start + len) {
+        while let Some(c) = self.line.get(start + len) {
             if func(*c) {
                 len += 1;
             } else {
@@ -85,69 +117,37 @@ impl<'a> ParserHelper<'a> {
             }
         }
         
-        &self.buffer[start..start + len]
-    }
-}
-
-#[derive(Error, Debug)]
-pub struct SyntaxError {
-    description: String,
-    lineno: usize,
-    column: usize,
-    line: Vec<u8>,
-    region: Range<usize>,
-}
-
-impl std::fmt::Display for SyntaxError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.region.len() > 1 {
-            writeln!(f, "SyntaxError in line {} columns {}-{}:", self.lineno, self.column, self.column + self.region.len() - 1)?;
-        } else {
-            writeln!(f, "SyntaxError in line {} column {}:", self.lineno, self.column)?;
-        }
-        writeln!(f, "> ")?;
-        writeln!(f, "> {}", String::from_utf8_lossy(&self.line))?;
-        writeln!(f, "> {0:1$}{2:^<3$}", "", self.region.start, "^", self.region.len())?;
-        writeln!(f, "{}", self.description)?;
-        Ok(())
-    }
-}
-
-pub enum NodeContent<'a> {
-    Comment(&'a [u8]),
-    LhsNonTerminal(&'a [u8]),
-    EndOfRule,
-}
-
-pub struct SyntaxNode<'a> {
-    lineno: usize,
-    column: usize,
-    content: NodeContent<'a>,
-}
-
-impl<'a> SyntaxNode<'a> {
-    fn comment(lineno: usize, column: usize, data: &'a [u8]) -> Self {
-        Self {
-            lineno,
-            column,
-            content: NodeContent::Comment(data),
-        }
+        &self.line[start..start + len]
     }
     
-    fn lhs_non_terminal(lineno: usize, column: usize, data: &'a [u8]) -> Self {
-        Self {
-            lineno,
-            column,
-            content: NodeContent::LhsNonTerminal(data),
-        }
+    fn error<S: Into<String>>(&self, description: S, region_len: usize) -> Result<()> {
+        Err(ParserError {
+            description: description.into(),
+            lineno: self.lineno,
+            column: self.cursor + 1,
+            line: self.line.to_vec(),
+            region: self.cursor..self.cursor + region_len,
+        }.into())
+    }
+}
+
+pub enum SyntaxNode {
+    Comment(Range<usize>),
+    LeftNonTerminal(Range<usize>),
+    EndRule(usize),
+}
+
+impl SyntaxNode {
+    fn comment(offset: usize, len: usize) -> Self {
+        Self::Comment(offset..offset + len)
     }
     
-    fn end_of_rule(lineno: usize, column: usize) -> Self {
-        Self {
-            lineno,
-            column,
-            content: NodeContent::EndOfRule,
-        }
+    fn left_non_terminal(offset: usize, len: usize) -> Self {
+        Self::LeftNonTerminal(offset..offset + len)
+    }
+    
+    fn end_rule(offset: usize) -> Self {
+        Self::EndRule(offset)
     }
 }
 
@@ -155,18 +155,18 @@ const START_COMMENT: &[u8] = b"#";
 const SIDE_SEPARATOR: &[u8] = b"->";
 const RULE_SEPARATOR: &[u8] = b";";
 
-pub struct GrammarParser<'a> {
-    nodes: Vec<SyntaxNode<'a>>,
+pub struct GrammarParser {
+    nodes: Vec<SyntaxNode>,
 }
 
-impl<'a> GrammarParser<'a> {
+impl GrammarParser {
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
         }
     }
     
-    pub fn parse(&mut self, data: &'a str) -> Result<()> {
+    pub fn parse(&mut self, data: &str) -> Result<()> {
         let data = data.as_bytes();
         let mut lineno = 0;
         let mut start = 0;
@@ -183,150 +183,127 @@ impl<'a> GrammarParser<'a> {
                 }
             }
             
-            self.parse_line(&data[start..end], lineno)?;
+            let mut parser = LineParser::new(
+                &data[start..end],
+                lineno,
+                start
+            );
+            self.parse_line(&mut parser)?;
+            
             start = end + 1;
         }
         
         Ok(())
     }
     
-    fn parse_line(&mut self, line: &'a [u8], lineno: usize) -> Result<()> {
-        let mut helper = ParserHelper::new(line);
-        
-        while helper.has_more_data() {
-            helper.skip(is_whitespace);
+    fn parse_line(&mut self, parser: &mut LineParser) -> Result<()> {
+        while parser.has_more_data() {
+            parser.skip(is_whitespace);
             
-            if helper.has(START_COMMENT) {
-                helper.skip(is_whitespace);
+            if parser.has(START_COMMENT) {
+                parser.skip(is_whitespace);
                 self.nodes.push(SyntaxNode::comment(
-                    lineno,
-                    helper.column(),
-                    helper.data(),
+                    parser.offset(),
+                    parser.data().len(),
                 ));
                 break;
             }
             
-            self.parse_lhs(&mut helper, line, lineno)?;
+            self.parse_lhs(parser)?;
             
-            helper.skip(is_whitespace);
+            parser.skip(is_whitespace);
             
-            if !helper.has(SIDE_SEPARATOR) {
-                return self.syntax_error(
+            if !parser.has(SIDE_SEPARATOR) {
+                return parser.error(
                     format!("Expected '{}'. Got this instead.", std::str::from_utf8(SIDE_SEPARATOR).unwrap()),
-                    lineno,
-                    &helper,
-                    line,
                     1,
                 );
             }
             
-            self.parse_rhs(&mut helper, line, lineno)?;
+            self.parse_rhs(parser)?;
         }
         
         Ok(())
     }
     
-    fn parse_lhs(&mut self, helper: &mut ParserHelper<'a>, line: &'a [u8], lineno: usize) -> Result<()> {
-        let lhs_nonterm = helper.collect(is_nonterminal);
+    fn parse_lhs(&mut self, parser: &mut LineParser) -> Result<()> {
+        let lhs_nonterm = parser.peek_filter(is_nonterminal);
         
         if lhs_nonterm.is_empty() {
-            return self.syntax_error(
+            return parser.error(
                 "Expected a non-terminal. Got this instead.",
-                lineno,
-                helper,
-                line,
                 1,
             );
         } else if lhs_nonterm.starts_with(b"-") {
-            return self.syntax_error(
+            return parser.error(
                 "Non-terminals are not allowed to start with a hyphen",
-                lineno,
-                helper,
-                line,
                 lhs_nonterm.len(),
             );
         } else if lhs_nonterm.ends_with(b"-") {
-            return self.syntax_error(
+            return parser.error(
                 "Non-terminals are not allowed to end with a hyphen",
-                lineno,
-                helper,
-                line,
                 lhs_nonterm.len(),
             );
         }
         
-        self.nodes.push(SyntaxNode::lhs_non_terminal(
-            lineno,
-            helper.column(),
-            lhs_nonterm
+        self.nodes.push(SyntaxNode::left_non_terminal(
+            parser.offset(),
+            lhs_nonterm.len(),
         ));
-        helper.advance(lhs_nonterm.len());
+        parser.advance(lhs_nonterm.len());
         
         Ok(())
     }
     
-    fn parse_rhs(&mut self, helper: &mut ParserHelper<'a>, line: &'a [u8], lineno: usize) -> Result<()> {
+    fn parse_rhs(&mut self, parser: &mut LineParser) -> Result<()> {
         let mut rhs_count = 0;
         
         loop {
-            helper.skip(is_whitespace);
+            parser.skip(is_whitespace);
             
-            match helper.peek(1) {
+            match parser.peek(1) {
                 None => if rhs_count == 0 {
-                    return self.syntax_error(
+                    return parser.error(
                         "Expected the right-hand side of a rule",
-                        lineno,
-                        helper,
-                        line,
                         1,
                     );
                 } else {
-                    self.nodes.push(SyntaxNode::end_of_rule(
-                        lineno,
-                        helper.column(),
+                    self.nodes.push(SyntaxNode::end_rule(
+                        parser.offset(),
                     ));
                     break;
                 },
                 Some(START_COMMENT) => if rhs_count == 0 {
-                    return self.syntax_error(
+                    return parser.error(
                         "No elements on the right-hand side of this rule",
-                        lineno,
-                        helper,
-                        line,
                         1,
                     );
                 } else {
-                    helper.advance(1);
-                    helper.skip(is_whitespace);
+                    parser.advance(1);
+                    parser.skip(is_whitespace);
                     self.nodes.push(SyntaxNode::comment(
-                        lineno,
-                        helper.column(),
-                        helper.data(),
+                        parser.offset(),
+                        parser.data().len(),
                     ));
-                    helper.go_to_end();
-                    self.nodes.push(SyntaxNode::end_of_rule(
-                        lineno,
-                        helper.column(),
+                    parser.go_to_end();
+                    self.nodes.push(SyntaxNode::end_rule(
+                        parser.offset(),
                     ));
                     break;
                 },
                 Some(RULE_SEPARATOR) => if rhs_count == 0 {
-                    return self.syntax_error(
+                    return parser.error(
                         "No elements on the right-hand side of this rule",
-                        lineno,
-                        helper,
-                        line,
                         1,
                     );
                 } else {
-                    self.nodes.push(SyntaxNode::end_of_rule(
-                        lineno,
-                        helper.column(),
+                    self.nodes.push(SyntaxNode::end_rule(
+                        parser.offset(),
                     ));
-                    helper.advance(1);
+                    parser.advance(1);
                     break;
                 },
-                _ => self.parse_rhs_element(helper, line, lineno)?,
+                _ => self.parse_rhs_element(parser)?,
             }
             
             rhs_count += 1;
@@ -335,7 +312,7 @@ impl<'a> GrammarParser<'a> {
         Ok(())
     }
     
-    fn parse_rhs_element(&mut self, helper: &mut ParserHelper<'a>, line: &'a [u8], lineno: usize) -> Result<()> {
+    fn parse_rhs_element(&mut self, helper: &mut LineParser) -> Result<()> {
         // string
         // char
         // set
@@ -346,20 +323,8 @@ impl<'a> GrammarParser<'a> {
             Some(_) => todo!(),
             None => todo!(),
         }
-        
-        todo!();
                 
         Ok(())
-    }
-    
-    fn syntax_error<S: Into<String>>(&self, description: S, lineno: usize, helper: &ParserHelper, line: &[u8], region_len: usize) -> Result<()> {
-        Err(SyntaxError {
-            description: description.into(),
-            lineno,
-            column: helper.column(),
-            line: line.to_vec(),
-            region: helper.position()..helper.position() + region_len,
-        }.into())
     }
 }
 
@@ -370,6 +335,6 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        parser.parse("   ASDF-ASDF -> #\nasdf asd fasd fasd fsadf ").unwrap();
+        parser.parse("   ASDF-ASDF- -> #\nasdf asd fasd fasd fsadf ").unwrap();
     }
 }
