@@ -169,6 +169,7 @@ pub enum SyntaxNode {
     EndRule(usize),
     String(Range<usize>),
     Char(Range<usize>),
+    NonTerminal(Range<usize>),
 }
 
 impl SyntaxNode {
@@ -190,6 +191,10 @@ impl SyntaxNode {
     
     fn char(offset: usize, len: usize) -> Self {
         Self::Char(offset..offset + len)
+    }
+    
+    fn non_terminal(offset: usize, len: usize) -> Self {
+        Self::NonTerminal(offset..offset + len)
     }
 }
 
@@ -262,7 +267,7 @@ impl GrammarParser {
                 break;
             }
             
-            self.parse_lhs(parser)?;
+            self.parse_non_terminal(parser, SyntaxNode::start_rule)?;
             
             parser.skip(is_whitespace);
             
@@ -279,7 +284,7 @@ impl GrammarParser {
         Ok(())
     }
     
-    fn parse_lhs(&mut self, parser: &mut LineParser) -> Result<()> {
+    fn parse_non_terminal(&mut self, parser: &mut LineParser, node_fn: fn(usize, usize) -> SyntaxNode) -> Result<()> {
         let lhs_nonterm = parser.peek_filter(is_nonterminal);
         
         if lhs_nonterm.is_empty() {
@@ -289,7 +294,7 @@ impl GrammarParser {
             );
         }
         
-        self.nodes.push(SyntaxNode::start_rule(
+        self.nodes.push(node_fn(
             parser.offset(),
             lhs_nonterm.len(),
         ));
@@ -366,14 +371,13 @@ impl GrammarParser {
     fn parse_rhs_element(&mut self, parser: &mut LineParser) -> Result<()> {
         // set
         // block
-        // non-terminal
         
         match parser.peek(1).unwrap() {
             STRING_SEPARATOR => self.parse_string(parser)?,
             CHAR_SEPARATOR => self.parse_char(parser)?,
-            _ => todo!(),
+            _ => self.parse_non_terminal(parser, SyntaxNode::non_terminal)?,
         }
-                
+        
         Ok(())
     }
     
@@ -483,7 +487,7 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00'#\n  #").unwrap();
+        parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  #").unwrap();
         println!("{:#?}", parser.nodes());
     }
     
