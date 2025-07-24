@@ -6,7 +6,7 @@ use thiserror::Error;
 type FilterFunc = fn(u8) -> bool;
 
 fn is_nonterminal(c: u8) -> bool {
-    c.is_ascii_uppercase() || c == b'-'
+    c.is_ascii_uppercase() || c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'_'
 }
 
 fn is_whitespace(c: u8) -> bool {
@@ -74,7 +74,9 @@ impl<'a> LineParser<'a> {
         self.offset + self.cursor
     }
     
-    fn skip(&mut self, func: FilterFunc) {
+    fn skip(&mut self, func: FilterFunc) -> usize {
+        let old_cursor = self.cursor;
+        
         while let Some(c) = self.line.get(self.cursor) {
             if func(*c) {
                 self.cursor += 1;
@@ -82,6 +84,8 @@ impl<'a> LineParser<'a> {
                 break;
             }
         }
+        
+        self.cursor - old_cursor
     }
     
     fn peek(&self, len: usize) -> Option<&'a [u8]> {
@@ -283,16 +287,6 @@ impl GrammarParser {
                 "Expected a non-terminal. Got this instead.",
                 1,
             );
-        } else if lhs_nonterm.starts_with(b"-") {
-            return parser.error(
-                "Non-terminals are not allowed to start with a hyphen",
-                lhs_nonterm.len(),
-            );
-        } else if lhs_nonterm.ends_with(b"-") {
-            return parser.error(
-                "Non-terminals are not allowed to end with a hyphen",
-                lhs_nonterm.len(),
-            );
         }
         
         self.nodes.push(SyntaxNode::start_rule(
@@ -308,7 +302,7 @@ impl GrammarParser {
         let mut rhs_count = 0;
         
         loop {
-            parser.skip(is_whitespace);
+            let ws_count = parser.skip(is_whitespace);
             
             match parser.peek(1) {
                 None => if rhs_count == 0 {
@@ -354,7 +348,13 @@ impl GrammarParser {
                     parser.advance(1);
                     break;
                 },
-                _ => self.parse_rhs_element(parser)?,
+                _ => {
+                    if rhs_count > 0 && ws_count == 0 {
+                        return parser.error("Elements on the right-hand side of a rule must be separated by whitespaces", 1);
+                    }
+                    
+                    self.parse_rhs_element(parser)?;
+                },
             }
             
             rhs_count += 1;
@@ -483,7 +483,14 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        parser.parse("   ASDF-ASDF -> \"asdf\\xFF\\\"\" '\\x00' #\n  #").unwrap();
+        parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00'#\n  #").unwrap();
+        println!("{:#?}", parser.nodes());
+    }
+    
+    #[test]
+    fn test_min() {
+        let mut parser = GrammarParser::new();
+        parser.parse("0->\"string\" '\\x00'#").unwrap();
         println!("{:#?}", parser.nodes());
     }
 }
