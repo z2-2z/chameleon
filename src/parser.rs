@@ -205,19 +205,19 @@ const STRING_SEPARATOR: &[u8] = b"\"";
 const CHAR_SEPARATOR: &[u8] = b"'";
 
 pub struct GrammarParser {
-    nodes: Vec<SyntaxNode>,
+    stream: Vec<SyntaxNode>,
 }
 
 impl GrammarParser {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            nodes: Vec::new(),
+            stream: Vec::new(),
         }
     }
     
-    pub fn nodes(&self) -> &[SyntaxNode] {
-        &self.nodes
+    pub fn stream(&self) -> &[SyntaxNode] {
+        &self.stream
     }
     
     pub fn parse(&mut self, data: &str) -> Result<()> {
@@ -257,7 +257,7 @@ impl GrammarParser {
             if parser.has(START_COMMENT) {
                 parser.skip(is_whitespace);
                 if parser.has_more_data() {
-                    self.nodes.push(SyntaxNode::comment(
+                    self.stream.push(SyntaxNode::comment(
                         parser.offset(),
                         parser.remaining_data().len(),
                     ));
@@ -294,7 +294,7 @@ impl GrammarParser {
             );
         }
         
-        self.nodes.push(node_fn(
+        self.stream.push(node_fn(
             parser.offset(),
             lhs_nonterm.len(),
         ));
@@ -316,7 +316,7 @@ impl GrammarParser {
                         1,
                     );
                 } else {
-                    self.nodes.push(SyntaxNode::end_rule());
+                    self.stream.push(SyntaxNode::end_rule());
                     break;
                 },
                 Some(START_COMMENT) => if rhs_count == 0 {
@@ -325,11 +325,11 @@ impl GrammarParser {
                         1,
                     );
                 } else {
-                    self.nodes.push(SyntaxNode::end_rule());
+                    self.stream.push(SyntaxNode::end_rule());
                     parser.advance(1);
                     parser.skip(is_whitespace);
                     if parser.has_more_data() {
-                        self.nodes.push(SyntaxNode::comment(
+                        self.stream.push(SyntaxNode::comment(
                             parser.offset(),
                             parser.remaining_data().len(),
                         ));
@@ -343,7 +343,7 @@ impl GrammarParser {
                         1,
                     );
                 } else {
-                    self.nodes.push(SyntaxNode::end_rule());
+                    self.stream.push(SyntaxNode::end_rule());
                     parser.advance(1);
                     break;
                 },
@@ -389,7 +389,7 @@ impl GrammarParser {
                 return parser.error("Invalid escape sequence", region.len());
             }
             
-            self.nodes.push(SyntaxNode::string(
+            self.stream.push(SyntaxNode::string(
                 parser.offset(),
                 contents.len(),
             ));
@@ -422,7 +422,7 @@ impl GrammarParser {
                 },
             }
             
-            self.nodes.push(SyntaxNode::char(
+            self.stream.push(SyntaxNode::char(
                 parser.offset(),
                 contents.len(),
             ));
@@ -482,13 +482,13 @@ mod tests {
     fn test_parser() {
         let mut parser = GrammarParser::new();
         parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  #").unwrap();
-        println!("{:#?}", parser.nodes());
+        println!("{:#?}", parser.stream());
     }
     
     #[test]
     fn test_min() {
         let mut parser = GrammarParser::new();
         parser.parse("0->\"string\" '\\x00'").unwrap();
-        println!("{:#?}", parser.nodes());
+        println!("{:#?}", parser.stream());
     }
 }
