@@ -164,6 +164,7 @@ pub enum SyntaxNode {
     StartRule(Range<usize>),
     EndRule(usize),
     String(Range<usize>),
+    Char(Range<usize>),
 }
 
 impl SyntaxNode {
@@ -182,12 +183,17 @@ impl SyntaxNode {
     fn string(offset: usize, len: usize) -> Self {
         Self::String(offset..offset + len)
     }
+    
+    fn char(offset: usize, len: usize) -> Self {
+        Self::Char(offset..offset + len)
+    }
 }
 
 const START_COMMENT: &[u8] = b"#";
 const SIDE_SEPARATOR: &[u8] = b"->";
 const RULE_SEPARATOR: &[u8] = b";";
 const STRING_SEPARATOR: &[u8] = b"\"";
+const CHAR_SEPARATOR: &[u8] = b"'";
 
 pub struct GrammarParser {
     nodes: Vec<SyntaxNode>,
@@ -358,14 +364,13 @@ impl GrammarParser {
     }
     
     fn parse_rhs_element(&mut self, parser: &mut LineParser) -> Result<()> {
-        // string
-        // char
         // set
         // block
         // non-terminal
         
         match parser.peek(1).unwrap() {
             STRING_SEPARATOR => self.parse_string(parser)?,
+            CHAR_SEPARATOR => self.parse_char(parser)?,
             _ => todo!(),
         }
                 
@@ -399,7 +404,41 @@ impl GrammarParser {
         Ok(())
     }
     
-    fn check_valid_escape_sequences(data: &[u8], in_string: bool) -> Result<(), Range<usize>> {
+    fn parse_char(&mut self, parser: &mut LineParser) -> Result<()> {
+        parser.advance(1);
+        
+        if let Some(contents) = parser.peek_filter_escaped(|c| c != CHAR_SEPARATOR[0]) {
+            if contents.is_empty() {
+                parser.recede(1);
+                return parser.error("Empty char", 2);
+            }
+            
+            match Self::check_valid_escape_sequences(contents, false) {
+                Ok(count) => if count != 1 {
+                    parser.recede(1);
+                    return parser.error("Too many characters in char", contents.len() + 2);
+                },
+                Err(region) => {
+                    parser.advance(region.start);
+                    return parser.error("Invalid escape sequence", region.len());
+                },
+            }
+            
+            self.nodes.push(SyntaxNode::char(
+                parser.offset(),
+                contents.len(),
+            ));
+            parser.advance(contents.len() + 1);
+        } else {
+            parser.recede(1);
+            return parser.error("Unterminated char", parser.remaining_data().len());
+        }
+        
+        Ok(())
+    }
+    
+    fn check_valid_escape_sequences(data: &[u8], in_string: bool) -> Result<usize, Range<usize>> {
+        let mut char_count = 0;
         let mut cursor = 0;
         
         while let Some(c) = data.get(cursor) {
@@ -430,9 +469,10 @@ impl GrammarParser {
             }
             
             cursor += 1;
+            char_count += 1;
         }
         
-        Ok(())
+        Ok(char_count)
     }
 }
 
@@ -443,7 +483,7 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        parser.parse("   ASDF-ASDF -> \"asdf\\xFF\\\"\" #\n  #").unwrap();
+        parser.parse("   ASDF-ASDF -> \"asdf\\xFF\\\"\" '\\x00' #\n  #").unwrap();
         println!("{:#?}", parser.nodes());
     }
 }
