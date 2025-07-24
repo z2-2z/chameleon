@@ -89,7 +89,11 @@ impl<'a> LineParser<'a> {
     }
     
     fn advance(&mut self, len: usize) {
-        self.cursor += len;
+        self.cursor = std::cmp::min(self.line.len(), self.cursor + len);
+    }
+    
+    fn recede(&mut self, len: usize) {
+        self.cursor = self.cursor.saturating_sub(len);
     }
     
     fn has(&mut self, data: &[u8]) -> bool {
@@ -101,7 +105,7 @@ impl<'a> LineParser<'a> {
         }
     }
     
-    fn data(&self) -> &'a [u8] {
+    fn remaining_data(&self) -> &'a [u8] {
         &self.line[self.cursor..]
     }
     
@@ -120,6 +124,29 @@ impl<'a> LineParser<'a> {
         &self.line[start..start + len]
     }
     
+    fn peek_filter_escaped(&self, func: FilterFunc) -> Option<&'a [u8]> {
+        let mut len = 0;
+        let start = self.cursor;
+        
+        while let Some(c) = self.line.get(start + len) {
+            if *c == b'\\' {
+                len += 2;
+            } else if func(*c) {
+                len += 1;
+            } else {
+                break;
+            }
+        }
+        
+        let end_idx = std::cmp::min(self.line.len(), start + len);
+        
+        if end_idx >= self.line.len() {
+            None
+        } else {
+            Some(&self.line[start..end_idx])
+        }
+    }
+    
     fn error<S: Into<String>>(&self, description: S, region_len: usize) -> Result<()> {
         Err(ParserError {
             description: description.into(),
@@ -131,10 +158,12 @@ impl<'a> LineParser<'a> {
     }
 }
 
+#[derive(Debug)]
 pub enum SyntaxNode {
     Comment(Range<usize>),
-    LeftNonTerminal(Range<usize>),
+    StartRule(Range<usize>),
     EndRule(usize),
+    String(Range<usize>),
 }
 
 impl SyntaxNode {
@@ -142,28 +171,38 @@ impl SyntaxNode {
         Self::Comment(offset..offset + len)
     }
     
-    fn left_non_terminal(offset: usize, len: usize) -> Self {
-        Self::LeftNonTerminal(offset..offset + len)
+    fn start_rule(offset: usize, len: usize) -> Self {
+        Self::StartRule(offset..offset + len)
     }
     
     fn end_rule(offset: usize) -> Self {
         Self::EndRule(offset)
+    }
+    
+    fn string(offset: usize, len: usize) -> Self {
+        Self::String(offset..offset + len)
     }
 }
 
 const START_COMMENT: &[u8] = b"#";
 const SIDE_SEPARATOR: &[u8] = b"->";
 const RULE_SEPARATOR: &[u8] = b";";
+const STRING_SEPARATOR: &[u8] = b"\"";
 
 pub struct GrammarParser {
     nodes: Vec<SyntaxNode>,
 }
 
 impl GrammarParser {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
         }
+    }
+    
+    pub fn nodes(&self) -> &[SyntaxNode] {
+        &self.nodes
     }
     
     pub fn parse(&mut self, data: &str) -> Result<()> {
@@ -202,10 +241,14 @@ impl GrammarParser {
             
             if parser.has(START_COMMENT) {
                 parser.skip(is_whitespace);
-                self.nodes.push(SyntaxNode::comment(
-                    parser.offset(),
-                    parser.data().len(),
-                ));
+                if parser.has_more_data() {
+                    self.nodes.push(SyntaxNode::comment(
+                        parser.offset(),
+                        parser.remaining_data().len(),
+                    ));
+                }
+                break;
+            } else if !parser.has_more_data() {
                 break;
             }
             
@@ -246,7 +289,7 @@ impl GrammarParser {
             );
         }
         
-        self.nodes.push(SyntaxNode::left_non_terminal(
+        self.nodes.push(SyntaxNode::start_rule(
             parser.offset(),
             lhs_nonterm.len(),
         ));
@@ -281,10 +324,12 @@ impl GrammarParser {
                 } else {
                     parser.advance(1);
                     parser.skip(is_whitespace);
-                    self.nodes.push(SyntaxNode::comment(
-                        parser.offset(),
-                        parser.data().len(),
-                    ));
+                    if parser.has_more_data() {
+                        self.nodes.push(SyntaxNode::comment(
+                            parser.offset(),
+                            parser.remaining_data().len(),
+                        ));
+                    }
                     parser.go_to_end();
                     self.nodes.push(SyntaxNode::end_rule(
                         parser.offset(),
@@ -312,18 +357,81 @@ impl GrammarParser {
         Ok(())
     }
     
-    fn parse_rhs_element(&mut self, helper: &mut LineParser) -> Result<()> {
+    fn parse_rhs_element(&mut self, parser: &mut LineParser) -> Result<()> {
         // string
         // char
         // set
         // block
         // non-terminal
         
-        match helper.peek(1) {
-            Some(_) => todo!(),
-            None => todo!(),
+        match parser.peek(1).unwrap() {
+            STRING_SEPARATOR => self.parse_string(parser)?,
+            _ => todo!(),
         }
                 
+        Ok(())
+    }
+    
+    fn parse_string(&mut self, parser: &mut LineParser) -> Result<()> {
+        parser.advance(1);
+        
+        if let Some(contents) = parser.peek_filter_escaped(|c| c != STRING_SEPARATOR[0]) {
+            if contents.is_empty() {
+                parser.recede(1);
+                return parser.error("Empty string", 2);
+            }
+            
+            if let Err(region) = Self::check_valid_escape_sequences(contents, true) {
+                parser.advance(region.start);
+                return parser.error("Invalid escape sequence", region.len());
+            }
+            
+            self.nodes.push(SyntaxNode::string(
+                parser.offset(),
+                contents.len(),
+            ));
+            parser.advance(contents.len() + 1);
+        } else {
+            parser.recede(1);
+            return parser.error("Unterminated string", parser.remaining_data().len());
+        }
+        
+        Ok(())
+    }
+    
+    fn check_valid_escape_sequences(data: &[u8], in_string: bool) -> Result<(), Range<usize>> {
+        let mut cursor = 0;
+        
+        while let Some(c) = data.get(cursor) {
+            if *c == b'\\' {
+                match data[cursor + 1] {
+                    b'0' | b'a' | b'b' | b't' | b'n' | b'v' | b'f' | b'r' => cursor += 1,
+                    b'"' => if in_string {
+                        cursor += 1;
+                    } else {
+                        return Err(cursor..cursor + 2);
+                    },
+                    b'\'' => if !in_string {
+                        cursor += 1;
+                    } else {
+                        return Err(cursor..cursor + 2);
+                    },
+                    b'x' => if let Some(hexdigits) = data.get(cursor + 2..cursor + 4) {
+                        if hexdigits.iter().all(|c| c.is_ascii_hexdigit()) {
+                            cursor += 3;
+                        } else {
+                            return Err(cursor..cursor + 4);
+                        }
+                    } else {
+                        return Err(cursor..data.len());
+                    },
+                    _ => return Err(cursor..cursor + 2),
+                }
+            }
+            
+            cursor += 1;
+        }
+        
         Ok(())
     }
 }
@@ -335,6 +443,7 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        parser.parse("   ASDF-ASDF- -> #\nasdf asd fasd fasd fsadf ").unwrap();
+        parser.parse("   ASDF-ASDF -> \"asdf\\xFF\\\"\" #\n  #").unwrap();
+        println!("{:#?}", parser.nodes());
     }
 }
