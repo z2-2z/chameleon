@@ -212,15 +212,12 @@ impl GrammarParser {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            stream: Vec::new(),
+            stream: Vec::with_capacity(4096),
         }
     }
     
-    pub fn stream(&self) -> &[SyntaxNode] {
-        &self.stream
-    }
-    
-    pub fn parse(&mut self, data: &str) -> Result<()> {
+    pub fn parse(&mut self, data: &str) -> Result<&[SyntaxNode]> {
+        self.stream.clear();
         let data = data.as_bytes();
         let mut lineno = 0;
         let mut start = 0;
@@ -247,7 +244,7 @@ impl GrammarParser {
             start = end + 1;
         }
         
-        Ok(())
+        Ok(&self.stream)
     }
     
     fn parse_line(&mut self, parser: &mut LineParser) -> Result<()> {
@@ -481,14 +478,14 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  #").unwrap();
-        println!("{:#?}", parser.stream());
+        let stream = parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  #").unwrap();
+        println!("{stream:#?}");
     }
     
     #[test]
     fn test_min() {
         let mut parser = GrammarParser::new();
-        parser.parse("0->\"string\" '\\x00'").unwrap();
-        println!("{:#?}", parser.stream());
+        let stream = parser.parse("0->\"string\" '\\x00'").unwrap();
+        println!("{stream:#?}");
     }
 }
