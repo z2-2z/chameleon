@@ -166,7 +166,7 @@ impl<'a> LineParser<'a> {
 pub enum SyntaxNode {
     Comment(Range<usize>),
     StartRule(Range<usize>),
-    EndRule(usize),
+    EndRule,
     String(Range<usize>),
     Char(Range<usize>),
     NonTerminal(Range<usize>),
@@ -181,8 +181,8 @@ impl SyntaxNode {
         Self::StartRule(offset..offset + len)
     }
     
-    fn end_rule(offset: usize) -> Self {
-        Self::EndRule(offset)
+    fn end_rule() -> Self {
+        Self::EndRule
     }
     
     fn string(offset: usize, len: usize) -> Self {
@@ -316,9 +316,7 @@ impl GrammarParser {
                         1,
                     );
                 } else {
-                    self.nodes.push(SyntaxNode::end_rule(
-                        parser.offset(),
-                    ));
+                    self.nodes.push(SyntaxNode::end_rule());
                     break;
                 },
                 Some(START_COMMENT) => if rhs_count == 0 {
@@ -327,6 +325,7 @@ impl GrammarParser {
                         1,
                     );
                 } else {
+                    self.nodes.push(SyntaxNode::end_rule());
                     parser.advance(1);
                     parser.skip(is_whitespace);
                     if parser.has_more_data() {
@@ -334,11 +333,8 @@ impl GrammarParser {
                             parser.offset(),
                             parser.remaining_data().len(),
                         ));
+                        parser.go_to_end();
                     }
-                    parser.go_to_end();
-                    self.nodes.push(SyntaxNode::end_rule(
-                        parser.offset(),
-                    ));
                     break;
                 },
                 Some(RULE_SEPARATOR) => if rhs_count == 0 {
@@ -347,9 +343,7 @@ impl GrammarParser {
                         1,
                     );
                 } else {
-                    self.nodes.push(SyntaxNode::end_rule(
-                        parser.offset(),
-                    ));
+                    self.nodes.push(SyntaxNode::end_rule());
                     parser.advance(1);
                     break;
                 },
@@ -494,7 +488,7 @@ mod tests {
     #[test]
     fn test_min() {
         let mut parser = GrammarParser::new();
-        parser.parse("0->\"string\" '\\x00'#").unwrap();
+        parser.parse("0->\"string\" '\\x00'").unwrap();
         println!("{:#?}", parser.nodes());
     }
 }
