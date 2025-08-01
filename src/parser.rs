@@ -584,7 +584,27 @@ impl GrammarParser {
     
     fn parse_number(&mut self, parser: &mut LineParser, datatype: &[u8]) -> Result<Range<usize>> {
         if parser.peek(2) == Some(b"0x") {
-            todo!()
+            let max_digits = match datatype {
+                b"u64" | b"i64" => 16,
+                b"u32" | b"i32" => 8,
+                b"u16" | b"i16" => 4,
+                b"u8" | b"i8" => 2,
+                _ => unreachable!(),
+            };
+            
+            parser.advance(2);
+            let number = parser.peek_filter(|c| c.is_ascii_hexdigit());
+            parser.rewind(2);
+            
+            if number.is_empty() {
+                parser.error("Expected a hex string", 3)?;
+            } else if number.len() > max_digits {
+                parser.error("Too many hex characters for given datatype", 2 + number.len())?;
+            }
+            
+            let ret = parser.offset()..parser.offset() + number.len();
+            parser.advance(2 + number.len());
+            Ok(ret)
         } else {
             let number = parser.peek_filter(is_decimal_number);
             
@@ -610,7 +630,7 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        let stream = parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  x -> Set<i8>(1, -1..-2)").unwrap();
+        let stream = parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  x -> Set<i8>(1, -1..-2, 0xFF..-1)").unwrap();
         println!("{stream:#?}");
     }
     
