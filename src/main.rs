@@ -19,6 +19,12 @@ enum Commands {
         /// Path to the grammar file to be formatted
         grammar: String,
     },
+    
+    /// Verifies that a grammar file is syntactically valid
+    Check {
+        /// Path to grammar file
+        grammar: String,
+    },
 }
 
 fn beautify(grammar: String) -> Result<()> {
@@ -163,10 +169,18 @@ fn beautify(grammar: String) -> Result<()> {
     Ok(())
 }
 
+fn verify(grammar: String) -> Result<()> {
+    let mut parser = parser::GrammarParser::new();
+    let content = std::fs::read_to_string(&grammar)?;
+    parser.parse(&content)?;
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     
     match args.command {
         Commands::Format { grammar } => beautify(grammar),
+        Commands::Check { grammar } => verify(grammar),
     }
 }
