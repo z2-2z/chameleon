@@ -194,6 +194,12 @@ impl<'a> LineParser<'a> {
 }
 
 #[derive(Debug)]
+pub enum NumberFormat {
+    Decimal(Range<usize>),
+    Hex(Range<usize>),
+}
+
+#[derive(Debug)]
 pub enum SyntaxNode {
     Comment(Range<usize>),
     StartRule(Range<usize>),
@@ -203,8 +209,8 @@ pub enum SyntaxNode {
     NonTerminal(Range<usize>),
     StartSet(Range<usize>),
     EndSet,
-    Number(Range<usize>),
-    Range(Range<usize>, Range<usize>),
+    Number(NumberFormat),
+    Range(NumberFormat, NumberFormat),
 }
 
 impl SyntaxNode {
@@ -582,8 +588,9 @@ impl GrammarParser {
         Ok(())
     }
     
-    fn parse_number(&mut self, parser: &mut LineParser, datatype: &[u8]) -> Result<Range<usize>> {
+    fn parse_number(&mut self, parser: &mut LineParser, datatype: &[u8]) -> Result<NumberFormat> {
         if parser.peek(2) == Some(b"0x") {
+            parser.advance(2);
             let max_digits = match datatype {
                 b"u64" | b"i64" => 16,
                 b"u32" | b"i32" => 8,
@@ -592,19 +599,19 @@ impl GrammarParser {
                 _ => unreachable!(),
             };
             
-            parser.advance(2);
             let number = parser.peek_filter(|c| c.is_ascii_hexdigit());
-            parser.rewind(2);
             
             if number.is_empty() {
+                parser.rewind(2);
                 parser.error("Expected a hex string", 3)?;
             } else if number.len() > max_digits {
+                parser.rewind(2);
                 parser.error("Too many hex characters for given datatype", 2 + number.len())?;
             }
             
             let ret = parser.offset()..parser.offset() + number.len();
-            parser.advance(2 + number.len());
-            Ok(ret)
+            parser.advance(number.len());
+            Ok(NumberFormat::Hex(ret))
         } else {
             let number = parser.peek_filter(is_decimal_number);
             
@@ -618,7 +625,7 @@ impl GrammarParser {
             
             let ret = parser.offset()..parser.offset() + number.len();
             parser.advance(number.len());
-            Ok(ret)
+            Ok(NumberFormat::Decimal(ret))
         }
     }
 }
