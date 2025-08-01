@@ -21,6 +21,10 @@ fn is_whitespace(c: u8) -> bool {
     c == b' ' || c == b'\t'
 }
 
+fn is_decimal_number(c: u8) -> bool {
+    c == b'-' || c.is_ascii_digit()
+}
+
 #[derive(Error, Debug)]
 pub struct ParserError {
     description: String,
@@ -199,6 +203,8 @@ pub enum SyntaxNode {
     NonTerminal(Range<usize>),
     StartSet(Range<usize>),
     EndSet,
+    Number(Range<usize>),
+    Range(Range<usize>, Range<usize>),
 }
 
 impl SyntaxNode {
@@ -555,7 +561,6 @@ impl GrammarParser {
         }
         
         self.stream.push(SyntaxNode::end_set());
-        
         Ok(())
     }
     
@@ -564,9 +569,37 @@ impl GrammarParser {
     }
     
     fn parse_set_element(&mut self, parser: &mut LineParser, datatype: &[u8]) -> Result<()> {
+        let first_number = self.parse_number(parser, datatype)?;
         
+        if parser.peek(2) == Some(b"..") {
+            parser.advance(2);
+            let second_number = self.parse_number(parser, datatype)?;
+            self.stream.push(SyntaxNode::Range(first_number, second_number));
+        } else {
+            self.stream.push(SyntaxNode::Number(first_number));
+        }
         
         Ok(())
+    }
+    
+    fn parse_number(&mut self, parser: &mut LineParser, datatype: &[u8]) -> Result<Range<usize>> {
+        if parser.peek(2) == Some(b"0x") {
+            todo!()
+        } else {
+            let number = parser.peek_filter(is_decimal_number);
+            
+            if number.is_empty() {
+                parser.error("Expected a number", 1)?;
+            } else if number.iter().skip(1).any(|c| *c == b'-') {
+                parser.error("Invalid dashes in number", number.len())?;
+            } else if datatype[0] == b'u' && number[0] == b'-' {
+                parser.error("Supplied a negative number for an unsigned datatype", number.len())?;
+            }
+            
+            let ret = parser.offset()..parser.offset() + number.len();
+            parser.advance(number.len());
+            Ok(ret)
+        }
     }
 }
 
@@ -577,7 +610,7 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        let stream = parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  x -> Set<i8>()").unwrap();
+        let stream = parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  x -> Set<i8>(1, -1..-2)").unwrap();
         println!("{stream:#?}");
     }
     

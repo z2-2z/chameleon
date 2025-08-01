@@ -9,6 +9,7 @@ NESTED_OR -> ("x" y z || ("y" || "z" "zz" "zzz") || "third")
 CHAR -> 'A' 'B' 'C' '\xXX' # comment
 # comment
 A -> "a"; B -> "b"; C -> "c"
+hex -> Set<i16>(0x8000..0xFFFF)
 
 - non-terminals only [A-Z\-]+
 
