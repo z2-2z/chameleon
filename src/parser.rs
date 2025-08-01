@@ -1,4 +1,3 @@
-use std::path::{Path, PathBuf};
 use std::ops::Range;
 use anyhow::Result;
 use thiserror::Error;
@@ -26,6 +25,26 @@ fn is_whitespace(c: u8) -> bool {
 
 fn is_decimal_number(c: u8) -> bool {
     c == b'-' || c.is_ascii_digit()
+}
+
+fn strip_whitespace(data: &[u8]) -> Range<usize> {
+    let mut start = 0;
+    
+    while start < data.len() && is_whitespace(data[start]) {
+        start += 1;
+    }
+    
+    if start >= data.len() {
+        return start..start;
+    }
+    
+    let mut end = data.len() - 1;
+    
+    while end > start && is_whitespace(data[end]) {
+        end -= 1;
+    }
+    
+    start..end + 1
 }
 
 #[derive(Error, Debug)]
@@ -67,14 +86,6 @@ impl<'a> LineParser<'a> {
             offset,
             lineno,
         }
-    }
-    
-    fn line(&self) -> &[u8] {
-        &self.line
-    }
-    
-    fn lineno(&self) -> usize {
-        self.lineno
     }
     
     fn go_to_end(&mut self) {
@@ -303,10 +314,14 @@ impl GrammarParser {
             if parser.has(START_COMMENT) {
                 parser.skip(is_whitespace);
                 if parser.has_more_data() {
-                    self.stream.push(SyntaxNode::comment(
-                        parser.offset(),
-                        parser.remaining_data().len(),
-                    ));
+                    let stripped = strip_whitespace(parser.remaining_data());
+                    
+                    if !stripped.is_empty() {
+                        self.stream.push(SyntaxNode::comment(
+                            parser.offset() + stripped.start,
+                            stripped.len(),
+                        ));
+                    }
                 }
                 break;
             } else if !parser.has_more_data() {
@@ -371,16 +386,21 @@ impl GrammarParser {
                         1,
                     );
                 } else {
-                    self.stream.push(SyntaxNode::end_rule());
                     parser.advance(1);
                     parser.skip(is_whitespace);
                     if parser.has_more_data() {
-                        self.stream.push(SyntaxNode::comment(
-                            parser.offset(),
-                            parser.remaining_data().len(),
-                        ));
+                        let stripped = strip_whitespace(parser.remaining_data());
+                        
+                        if !stripped.is_empty() {
+                            self.stream.push(SyntaxNode::comment(
+                                parser.offset() + stripped.start,
+                                stripped.len(),
+                            ));
+                        }
+                        
                         parser.go_to_end();
                     }
+                    self.stream.push(SyntaxNode::end_rule());
                     break;
                 },
                 Some(RULE_SEPARATOR) => if rhs_count == 0 {
@@ -683,7 +703,7 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        let stream = parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  x -> Set<i8>(1, -1..-2, 0xFF..-1); y -> (x y z || a (bb || bb) c )").unwrap();
+        let stream = parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#aa\n # asdf \n  x -> Set<i8>(1, -1..-2, 0xFF..-1); y -> (x y z || a (bb || bb) c )").unwrap();
         println!("{stream:#?}");
     }
     
