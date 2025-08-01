@@ -3,6 +3,14 @@ use std::ops::Range;
 use anyhow::Result;
 use thiserror::Error;
 
+const START_COMMENT: &[u8] = b"#";
+const SIDE_SEPARATOR: &[u8] = b"->";
+const RULE_SEPARATOR: &[u8] = b";";
+const STRING_SEPARATOR: &[u8] = b"\"";
+const CHAR_SEPARATOR: &[u8] = b"'";
+const SET_OPEN: &[u8] = b"Set<";
+const SET_CLOSE_TYPE: &[u8] = b">";
+
 type FilterFunc = fn(u8) -> bool;
 
 fn is_nonterminal(c: u8) -> bool {
@@ -96,7 +104,7 @@ impl<'a> LineParser<'a> {
         self.cursor = std::cmp::min(self.line.len(), self.cursor + len);
     }
     
-    fn recede(&mut self, len: usize) {
+    fn rewind(&mut self, len: usize) {
         self.cursor = self.cursor.saturating_sub(len);
     }
     
@@ -126,6 +134,25 @@ impl<'a> LineParser<'a> {
         }
         
         &self.line[start..start + len]
+    }
+    
+    fn peek_filter_terminated(&self, func: FilterFunc) -> Option<&'a [u8]> {
+        let mut len = 0;
+        let start = self.cursor;
+        
+        while let Some(c) = self.line.get(start + len) {
+            if func(*c) {
+                len += 1;
+            } else {
+                break;
+            }
+        }
+        
+        if start + len >= self.line.len() {
+            None
+        } else {
+            Some(&self.line[start..start + len])
+        }
     }
     
     fn peek_filter_escaped(&self, func: FilterFunc) -> Option<&'a [u8]> {
@@ -170,6 +197,8 @@ pub enum SyntaxNode {
     String(Range<usize>),
     Char(Range<usize>),
     NonTerminal(Range<usize>),
+    StartSet(Range<usize>),
+    EndSet,
 }
 
 impl SyntaxNode {
@@ -196,13 +225,15 @@ impl SyntaxNode {
     fn non_terminal(offset: usize, len: usize) -> Self {
         Self::NonTerminal(offset..offset + len)
     }
+    
+    fn start_set(offset: usize, len: usize) -> Self {
+        Self::StartSet(offset..offset + len)
+    }
+    
+    fn end_set() -> Self {
+        Self::EndSet
+    }
 }
-
-const START_COMMENT: &[u8] = b"#";
-const SIDE_SEPARATOR: &[u8] = b"->";
-const RULE_SEPARATOR: &[u8] = b";";
-const STRING_SEPARATOR: &[u8] = b"\"";
-const CHAR_SEPARATOR: &[u8] = b"'";
 
 pub struct GrammarParser {
     stream: Vec<SyntaxNode>,
@@ -282,9 +313,9 @@ impl GrammarParser {
     }
     
     fn parse_non_terminal(&mut self, parser: &mut LineParser, node_fn: fn(usize, usize) -> SyntaxNode) -> Result<()> {
-        let lhs_nonterm = parser.peek_filter(is_nonterminal);
+        let nonterm = parser.peek_filter(is_nonterminal);
         
-        if lhs_nonterm.is_empty() {
+        if nonterm.is_empty() {
             return parser.error(
                 "Expected a non-terminal. Got this instead.",
                 1,
@@ -293,9 +324,9 @@ impl GrammarParser {
         
         self.stream.push(node_fn(
             parser.offset(),
-            lhs_nonterm.len(),
+            nonterm.len(),
         ));
-        parser.advance(lhs_nonterm.len());
+        parser.advance(nonterm.len());
         
         Ok(())
     }
@@ -366,7 +397,11 @@ impl GrammarParser {
         match parser.peek(1).unwrap() {
             STRING_SEPARATOR => self.parse_string(parser)?,
             CHAR_SEPARATOR => self.parse_char(parser)?,
-            _ => self.parse_non_terminal(parser, SyntaxNode::non_terminal)?,
+            _ => if parser.peek(4) == Some(SET_OPEN) {
+                self.parse_set(parser)?;
+            } else {
+                self.parse_non_terminal(parser, SyntaxNode::non_terminal)?;
+            },
         }
         
         Ok(())
@@ -377,7 +412,7 @@ impl GrammarParser {
         
         if let Some(contents) = parser.peek_filter_escaped(|c| c != STRING_SEPARATOR[0]) {
             if contents.is_empty() {
-                parser.recede(1);
+                parser.rewind(1);
                 return parser.error("Empty string", 2);
             }
             
@@ -392,7 +427,7 @@ impl GrammarParser {
             ));
             parser.advance(contents.len() + 1);
         } else {
-            parser.recede(1);
+            parser.rewind(1);
             return parser.error("Unterminated string", parser.remaining_data().len());
         }
         
@@ -404,13 +439,13 @@ impl GrammarParser {
         
         if let Some(contents) = parser.peek_filter_escaped(|c| c != CHAR_SEPARATOR[0]) {
             if contents.is_empty() {
-                parser.recede(1);
+                parser.rewind(1);
                 return parser.error("Empty char", 2);
             }
             
             match Self::check_valid_escape_sequences(contents, false) {
                 Ok(count) => if count != 1 {
-                    parser.recede(1);
+                    parser.rewind(1);
                     return parser.error("Too many characters in char", contents.len() + 2);
                 },
                 Err(region) => {
@@ -425,7 +460,7 @@ impl GrammarParser {
             ));
             parser.advance(contents.len() + 1);
         } else {
-            parser.recede(1);
+            parser.rewind(1);
             return parser.error("Unterminated char", parser.remaining_data().len());
         }
         
@@ -469,6 +504,70 @@ impl GrammarParser {
         
         Ok(char_count)
     }
+    
+    fn parse_set(&mut self, parser: &mut LineParser) -> Result<()> {
+        parser.advance(SET_OPEN.len());
+        
+        let datatype: &[u8];
+        
+        if let Some(content) = parser.peek_filter_terminated(|c| c != SET_CLOSE_TYPE[0]) {
+            if !Self::check_set_datatype(content) {
+                return parser.error("Invalid data type", content.len());
+            }
+            
+            self.stream.push(SyntaxNode::start_set(
+                parser.offset(),
+                content.len(),
+            ));
+            
+            datatype = content;
+            parser.advance(content.len() + 1);
+        } else {
+            return parser.error("Unterminated set type", 1);
+        }
+        
+        if !parser.has(b"(") {
+            return parser.error("Expected set definition in brackets", 1);
+        }
+        
+        let mut num_elements = 0;
+        
+        loop {
+            parser.skip(is_whitespace);
+            
+            self.parse_set_element(parser, datatype)?;
+            num_elements += 1;
+            
+            match parser.peek(1) {
+                None | Some(b")") => break,
+                Some(b",") => parser.advance(1),
+                _ => return parser.error("Unexpected character in set", 1),
+            }
+        }
+        
+        if !parser.has(b")") {
+            return parser.error("Missing closing bracket", 1);
+        }
+        
+        if num_elements == 0 {
+            parser.rewind(1);
+            return parser.error("Empty set", 1);
+        }
+        
+        self.stream.push(SyntaxNode::end_set());
+        
+        Ok(())
+    }
+    
+    fn check_set_datatype(data: &[u8]) -> bool {
+        matches!(data, b"u64" | b"i64" | b"u32" | b"i32" | b"u16" | b"i16" | b"u8" | b"i8")
+    }
+    
+    fn parse_set_element(&mut self, parser: &mut LineParser, datatype: &[u8]) -> Result<()> {
+        
+        
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -478,7 +577,7 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        let stream = parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  #").unwrap();
+        let stream = parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  x -> Set<i8>()").unwrap();
         println!("{stream:#?}");
     }
     
