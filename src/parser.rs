@@ -10,6 +10,9 @@ const STRING_SEPARATOR: &[u8] = b"\"";
 const CHAR_SEPARATOR: &[u8] = b"'";
 const SET_OPEN: &[u8] = b"Set<";
 const SET_CLOSE_TYPE: &[u8] = b">";
+const BLOCK_OPEN: &[u8] = b"(";
+const BLOCK_CLOSE: &[u8] = b")";
+const BLOCK_SEPARATOR: &[u8] = b"||";
 
 type FilterFunc = fn(u8) -> bool;
 
@@ -211,6 +214,9 @@ pub enum SyntaxNode {
     EndSet,
     Number(NumberFormat),
     Range(NumberFormat, NumberFormat),
+    StartBlock,
+    BlockSeparator,
+    EndBlock,
 }
 
 impl SyntaxNode {
@@ -403,12 +409,10 @@ impl GrammarParser {
     }
     
     fn parse_rhs_element(&mut self, parser: &mut LineParser) -> Result<()> {
-        // set
-        // block
-        
         match parser.peek(1).unwrap() {
             STRING_SEPARATOR => self.parse_string(parser)?,
             CHAR_SEPARATOR => self.parse_char(parser)?,
+            BLOCK_OPEN => self.parse_block(parser)?,
             _ => if parser.peek(4) == Some(SET_OPEN) {
                 self.parse_set(parser)?;
             } else {
@@ -628,6 +632,48 @@ impl GrammarParser {
             Ok(NumberFormat::Decimal(ret))
         }
     }
+    
+    fn parse_block(&mut self, parser: &mut LineParser) -> Result<()> {
+        parser.advance(1);
+        self.stream.push(SyntaxNode::StartBlock);
+        
+        let mut num_elements = 0;
+        let mut num_separators = 0;
+        
+        loop {
+            let ws_count = parser.skip(is_whitespace);
+            
+            if parser.peek(1) == Some(BLOCK_CLOSE) {
+                break;
+            } else if parser.peek(2) == Some(BLOCK_SEPARATOR) {
+                if num_elements == 0 {
+                    return parser.error("Encountered a block separator but no elements precede it", 2);
+                }
+                
+                parser.advance(2);
+                self.stream.push(SyntaxNode::BlockSeparator);
+                num_elements = 0;
+                num_separators += 1;
+            } else {
+                if num_elements > 0 && ws_count == 0 {
+                    return parser.error("Use whitespaces as separators", 1);
+                }
+                
+                self.parse_rhs_element(parser)?;
+                num_elements += 1;
+            }
+        }
+        
+        if num_elements == 0 {
+            return parser.error("Encountered a block terminator but no elements precede it", 1);
+        } else if num_separators == 0 {
+            return parser.error("You are closing a block without any separators", 1);
+        }
+        
+        parser.advance(1);
+        self.stream.push(SyntaxNode::EndBlock);
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -637,7 +683,7 @@ mod tests {
     #[test]
     fn test_parser() {
         let mut parser = GrammarParser::new();
-        let stream = parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  x -> Set<i8>(1, -1..-2, 0xFF..-1)").unwrap();
+        let stream = parser.parse("   ASDF_asdf -> \"asdf\\xFF\\\"\" '\\x00' nonterm#\n  x -> Set<i8>(1, -1..-2, 0xFF..-1); y -> (x y z || a (bb || bb) c )").unwrap();
         println!("{stream:#?}");
     }
     
