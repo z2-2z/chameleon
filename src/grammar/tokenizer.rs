@@ -167,6 +167,17 @@ impl<'a> Parser<'a> {
             false
         }
     }
+    
+    fn consume(&mut self, n: usize) -> Option<&'a str> {
+        let start = self.cursor;
+        let ret = self.view.str_at(start..start + n);
+        
+        if ret.is_some() {
+            self.cursor += n;
+        }
+        
+        ret
+    }
 }
 
 #[derive(Debug, Error)]
@@ -231,6 +242,8 @@ impl ParsingError {
 #[derive(Debug)]
 pub enum Token<'a> {
     StartRule(&'a str),
+    NonTerminal(&'a str),
+    String(Vec<u8>),
 }
 
 pub struct Tokenizer {
@@ -311,7 +324,7 @@ impl Tokenizer {
     }
     
     fn parse_rule_definition<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
-        /* Left hand side: a non-terminal */
+        /* Left-hand side: a non-terminal */
         let nonterm = self.parse_nonterminal(parser)?;
         tokens.push(Token::StartRule(nonterm));
         
@@ -322,7 +335,7 @@ impl Tokenizer {
             return Err(ParsingError::missing_separator(parser));
         }
         
-        /* Then, the right hand side */
+        /* Then, the right-hand side */
         let mut num_elems = 0;
         
         loop {
@@ -363,7 +376,75 @@ impl Tokenizer {
     }
     
     fn parse_one_element<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+        /*
+        number
+        brackets
+        or
+         */
+        
+        if parser.has(syntax::START_NONTERMINAL) {
+            let nonterm = self.parse_nonterminal(parser)?;
+            tokens.push(Token::NonTerminal(nonterm));
+        } else if parser.has(syntax::START_STRING) {
+            self.parse_string(parser, tokens)?;
+        } else {
+            todo!();
+        }
         
         Ok(())
+    }
+    
+    fn parse_string<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+        let mut buf = [0; 4];
+        let mut result = Vec::new();
+        
+        parser.skip_str(syntax::START_STRING);
+        
+        while let Some(c) = parser.current_char() {
+            if parser.expect(syntax::END_STRING) {
+                tokens.push(Token::String(result));
+                return Ok(());
+            } else if syntax::is_forbidden_in_string(c) {
+                todo!("unterminated string error")
+            }
+            
+            if c == '\\' {
+                let c = self.parse_escape_character(parser)?;
+                result.push(c);
+            } else {
+                result.extend(c.encode_utf8(&mut buf).as_bytes());
+            }
+            
+            parser.skip_char();
+        }
+        
+        todo!("Error unclosed string")
+    }
+    
+    fn parse_escape_character<'a>(&mut self, parser: &mut Parser<'a>) -> Result<u8, ParsingError> {
+        //let start_character = parser.cursor();
+        
+        parser.skip_str("\\");
+        
+        match parser.current_char() {
+            Some('0') => Ok(b'\0'),
+            Some('a') => Ok(7),
+            Some('b') => Ok(8),
+            Some('t') => Ok(b'\t'),
+            Some('n') => Ok(b'\n'),
+            Some('v') => Ok(11),
+            Some('f') => Ok(12),
+            Some('r') => Ok(b'\r'),
+            Some('\\') => Ok(b'\\'),
+            Some('"') => Ok(b'"'),
+            Some('x') => {
+                parser.skip_char();
+                
+                let Some(hexstring) = parser.consume(2) else { todo!() };
+                
+                u8::from_str_radix(hexstring, 16).map_err(|_| todo!())
+            },
+            _ => todo!(),
+        }
     }
 }
