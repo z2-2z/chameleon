@@ -1,17 +1,21 @@
-Grammar:
-ENTRYPOINT -> ...
-NT -> Set<u64>(1..3, 50..100, 12) "some text\r\n\"\xXX" other_nonterminal
-BIN -> Set<u64>(1..3)
-BIN -> Set<u64>(50..100)
-BIN -> Set<u64>(12)
-OR -> pre-nonterm ("asdf" || "ASDF") post-nonterm
-NESTED_OR -> ("x" y z || ("y" || "z" "zz" "zzz") || "third")
-CHAR -> 'A' 'B' 'C' '\xXX' # comment
-# comment
-A -> "a"; B -> "b"; C -> "c"
-hex -> Set<i16>(0x8000..0xFFFF)
+/* comment /* nested comment */ */
+<NONTERMINAL> => u64<1..3> "asdfdsa" <OTHER_NONTERM>
+<NONTERMINAL> => ((<A> <B>) || <B>) <C> || <D>
+<HEXPATTERNS> => i16<0x8000..0xFFFF>
+<SINGLE_NUMBERS> => i8<3, 7, 9, 12>
+<MULTI-LINE> => (
+    (<A> <B> <C> <D>) ||
+    (<E> <F>)
+)
 
-- non-terminals only [A-Z\-]+
+- nonterminal charset A-Z_-0-9
+- one rule per line
+- newlines as whitespaces are allowed in brackets
+- <A> <B> || <C> <D> || <E> <F> has association <A> (<B> || <C>) (<D> || <E>) <F>
+- range X..Y order does not matter so 3..5 == 5..3 and both bounds are inclusive
+- no chars, only strings
+- include all ascii escape characters in string + \xXX hex escape + \0 + \uXXXX
+- entrypoint nonterm is ENTRYPOINT
 
 Capabilities:
 1. Parse text/binary data into internal representation
@@ -19,9 +23,6 @@ Capabilities:
 3. Mutate
 4. Grammar formatter
 5. Just translate grammar to C code
-6. Merge grammars from different formats / multiple files into one
-    - make it so that merge operation is projection and merging
-      the same ruleset multiple times is no problem
 
 Interface:
 1. Generate C code
