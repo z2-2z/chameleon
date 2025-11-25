@@ -126,6 +126,7 @@ impl<'a> Parser<'a> {
     }
     
     fn skip_str(&mut self, s: &str) {
+        debug_assert!(self.has(s));
         self.cursor += StringView::converted_len(s);
     }
     
@@ -140,12 +141,47 @@ impl<'a> Parser<'a> {
     fn current_char(&self) -> Option<char> {
         self.view.char_at(self.cursor)
     }
+    
+    fn collect<F>(&mut self, mut f: F) -> Option<&'a str>
+    where
+        F: FnMut(char) -> bool,
+    {
+        let start = self.cursor;
+        
+        loop {
+            if let Some(c) = self.view.char_at(self.cursor) && f(c) {
+                self.cursor += 1;
+            } else {
+                break;
+            }
+        }
+        
+        self.view.str_at(start..self.cursor)
+    }
+    
+    fn expect(&mut self, s: &str) -> bool {
+        if self.has(s) {
+            self.skip_str(s);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Debug, Error)]
 pub enum ParsingErrorKind {
     #[error("This comment was never closed")]
     UnclosedComment,
+    
+    #[error("Invalid characters in non-terminal")]
+    InvalidNonterminal,
+    
+    #[error("Expected a separator")]
+    MissingSeparator,
+    
+    #[error("No symbols were supplied on the right-hand side of the rule")]
+    MissingRhs,
 }
 
 #[derive(Debug)]
@@ -161,6 +197,33 @@ impl ParsingError {
         Self {
             range: start..start + syntax::START_COMMENT.len(),
             kind: ParsingErrorKind::UnclosedComment,
+        }
+    }
+    
+    fn invalid_nonterminal(parser: &Parser) -> Self {
+        let start = parser.offset(parser.cursor());
+        
+        Self {
+            range: start..start + 1,
+            kind: ParsingErrorKind::InvalidNonterminal,
+        }
+    }
+    
+    fn missing_separator(parser: &Parser) -> Self {
+        let start = parser.offset(parser.cursor());
+        
+        Self {
+            range: start..start + 1,
+            kind: ParsingErrorKind::MissingSeparator,
+        }
+    }
+    
+    fn missing_rhs(parser: &Parser) -> Self {
+        let start = parser.offset(parser.cursor());
+        
+        Self {
+            range: start..start + 1,
+            kind: ParsingErrorKind::MissingRhs,
         }
     }
 }
@@ -194,7 +257,7 @@ impl Tokenizer {
         Ok(tokens)
     }
     
-    fn parse_top_level(&mut self, parser: &mut Parser, tokens: &mut Vec<Token>) -> Result<(), ParsingError> {
+    fn parse_top_level<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
         loop {
             parser.skip_fn(syntax::is_whitespace_nl);
             
@@ -203,9 +266,8 @@ impl Tokenizer {
             } else if parser.has(syntax::START_COMMENT) {
                 self.skip_comment(parser)?;
             } else if parser.has(syntax::START_NONTERMINAL) {
-                
+                self.parse_rule_definition(parser, tokens)?;
             } else {
-                
                 todo!("Encountered invalid thing error");
             }
         }
@@ -234,8 +296,7 @@ impl Tokenizer {
                         parser.skip_char();
                     }
                 } else if c == end_first {
-                    if parser.has(syntax::END_COMMENT) {
-                        parser.skip_str(syntax::END_COMMENT);
+                    if parser.expect(syntax::END_COMMENT) {
                         break;
                     } else {
                         parser.skip_char();
@@ -245,6 +306,63 @@ impl Tokenizer {
                 },
             }
         }
+        
+        Ok(())
+    }
+    
+    fn parse_rule_definition<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+        /* Left hand side: a non-terminal */
+        let nonterm = self.parse_nonterminal(parser)?;
+        tokens.push(Token::StartRule(nonterm));
+        
+        /* Then, a separator */
+        parser.skip_fn(syntax::is_whitespace);
+        
+        if !parser.expect(syntax::RULE_SEPARATOR) {
+            return Err(ParsingError::missing_separator(parser));
+        }
+        
+        /* Then, the right hand side */
+        let mut num_elems = 0;
+        
+        loop {
+            parser.skip_fn(syntax::is_whitespace);
+            
+            if parser.has(syntax::END_RULE) {
+                if num_elems == 0 {
+                    return Err(ParsingError::missing_rhs(parser));
+                }
+                
+                parser.skip_str(syntax::END_RULE);
+                break;
+            } else if parser.eof() {
+                if num_elems == 0 {
+                    return Err(ParsingError::missing_rhs(parser));
+                }
+                
+                break;
+            } else {
+                self.parse_one_element(parser, tokens)?;
+                num_elems += 1;
+            }
+        }
+        
+        Ok(())
+    }
+    
+    fn parse_nonterminal<'a>(&mut self, parser: &mut Parser<'a>) -> Result<&'a str, ParsingError> {
+        parser.skip_str(syntax::START_NONTERMINAL);
+        
+        let nonterm = parser.collect(syntax::is_nonterminal).unwrap_or("");
+        
+        if nonterm.is_empty() || !parser.expect(syntax::END_NONTERMINAL) {
+            return Err(ParsingError::invalid_nonterminal(parser));
+        }
+        
+        Ok(nonterm)
+    }
+    
+    fn parse_one_element<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
         
         Ok(())
     }
