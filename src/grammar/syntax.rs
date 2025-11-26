@@ -24,3 +24,4 @@ pub const START_STRING: &str = "\"";
 pub const END_STRING: &str = "\"";
 pub const START_GROUP: &str = "(";
 pub const END_GROUP: &str = ")";
+pub const OPERATOR_OR: &str = "||";

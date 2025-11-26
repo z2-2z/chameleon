@@ -197,8 +197,11 @@ pub enum ParsingErrorKind {
     #[error("Invalid string: {0}")]
     InvalidString(&'static str),
     
-    #[error("Group does not contain any elements")]
-    EmptyGroup,
+    #[error("Invalid group: {0}")]
+    InvalidGroup(&'static str),
+    
+    #[error("Error with OR: {0}")]
+    OrError(&'static str)
 }
 
 #[derive(Debug)]
@@ -253,12 +256,21 @@ impl ParsingError {
         }
     }
     
-    fn empty_group(parser: &Parser, start: usize) -> Self {
+    fn invalid_group(parser: &Parser, start: usize, description: &'static str) -> Self {
         let start = parser.offset(start);
         
         Self {
             range: start..start + syntax::START_GROUP.len(),
-            kind: ParsingErrorKind::EmptyGroup,
+            kind: ParsingErrorKind::InvalidGroup(description),
+        }
+    }
+    
+    fn or_error(parser: &Parser, description: &'static str) -> Self {
+        let start = parser.offset(parser.cursor());
+        
+        Self {
+            range: start..start + syntax::OPERATOR_OR.len(),
+            kind: ParsingErrorKind::OrError(description),
         }
     }
 }
@@ -270,6 +282,31 @@ pub enum Token<'a> {
     String(Vec<u8>),
     StartGroup,
     EndGroup,
+    Or,
+}
+
+impl<'a> Token<'a> {
+    fn has_content(&self) -> bool {
+        match self {
+            Token::StartRule(_) => false,
+            Token::NonTerminal(_) => true,
+            Token::String(_) => true,
+            Token::StartGroup => false,
+            Token::EndGroup => true,
+            Token::Or => false,
+        }
+    }
+    
+    fn needs_following_content(&self) -> bool {
+        match self {
+            Token::StartRule(_) => true,
+            Token::NonTerminal(_) => false,
+            Token::String(_) => false,
+            Token::StartGroup => true,
+            Token::EndGroup => false,
+            Token::Or => true,
+        }
+    }
 }
 
 pub struct Tokenizer {
@@ -400,7 +437,6 @@ impl Tokenizer {
     fn parse_one_element<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
         /*
         number
-        or
          */
         
         if parser.has(syntax::START_NONTERMINAL) {
@@ -411,6 +447,8 @@ impl Tokenizer {
             tokens.push(Token::String(string));
         } else if parser.has(syntax::START_GROUP) {
             self.parse_group(parser, tokens)?;
+        } else if parser.has(syntax::OPERATOR_OR) {
+            self.parse_or(parser, tokens)?;
         } else {
             todo!();
         }
@@ -493,11 +531,26 @@ impl Tokenizer {
         }
         
         if num_elements == 0 {
-            return Err(ParsingError::empty_group(parser, start_group));
+            return Err(ParsingError::invalid_group(parser, start_group, "Group is empty"));
+        } else if tokens.last().unwrap().needs_following_content() {
+            return Err(ParsingError::invalid_group(parser, start_group, "Group closed prematurely"));
         }
         
         tokens.push(Token::EndGroup);
         self.group_level -= 1;
+        
+        Ok(())
+    }
+    
+    fn parse_or<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+        if self.group_level == 0 {
+            return Err(ParsingError::or_error(parser, "For clarity the OR operator is only allowed inside a group"));
+        } else if !tokens.last().unwrap().has_content() {
+            return Err(ParsingError::or_error(parser, "OR is not separating elements"));
+        }
+        
+        parser.skip_str(syntax::OPERATOR_OR);
+        tokens.push(Token::Or);
         
         Ok(())
     }
