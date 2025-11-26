@@ -201,7 +201,10 @@ pub enum ParsingErrorKind {
     InvalidGroup(&'static str),
     
     #[error("Error with OR: {0}")]
-    OrError(&'static str)
+    OrError(&'static str),
+    
+    #[error("Encountered an unexpected element")]
+    UnexpectedElement,
 }
 
 #[derive(Debug)]
@@ -273,6 +276,73 @@ impl ParsingError {
             kind: ParsingErrorKind::OrError(description),
         }
     }
+    
+    fn unexpected_element(parser: &Parser) -> Self {
+        let start = parser.offset(parser.cursor());
+        
+        Self {
+            range: start..start + 1,
+            kind: ParsingErrorKind::UnexpectedElement,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum NumberType {
+    U8,
+    I8,
+    U16,
+    I16,
+    U32,
+    I32,
+    U64,
+    I64,
+}
+
+impl NumberType {
+    fn parse_decimal(&self, s: &str) -> Option<u64> {
+        if s.is_empty() {
+            return None;
+        }
+        
+        match self {
+            NumberType::U8 => s.parse::<u8>().map(|v| v as u64),
+            NumberType::I8 => s.parse::<i8>().map(|v| v as u8 as u64),
+            NumberType::U16 => s.parse::<u16>().map(|v| v as u64),
+            NumberType::I16 => s.parse::<i16>().map(|v| v as u16 as u64),
+            NumberType::U32 => s.parse::<u32>().map(|v| v as u64),
+            NumberType::I32 => s.parse::<i32>().map(|v| v as u32 as u64),
+            NumberType::U64 => s.parse::<u64>(),
+            NumberType::I64 => s.parse::<i64>().map(|v| v as u64),
+        }.ok()
+    }
+    
+    fn parse_hexadecimal(&self, s: &str) -> Option<u64> {
+        if s.is_empty() {
+            return None;
+        }
+        
+        match self {
+            NumberType::I8 |
+            NumberType::U8 => if s.len() > 2 {
+                return None;
+            },
+            NumberType::I16 |
+            NumberType::U16 => if s.len() > 4 {
+                return None;
+            },
+            NumberType::I32 |
+            NumberType::U32 => if s.len() > 8 {
+                return None;
+            },
+            NumberType::I64 |
+            NumberType::U64 => if s.len() > 16 {
+                return None;
+            },
+        }
+        
+        u64::from_str_radix(s, 16).ok()
+    }
 }
 
 #[derive(Debug)]
@@ -283,6 +353,9 @@ pub enum Token<'a> {
     StartGroup,
     EndGroup,
     Or,
+    StartNumberset(NumberType),
+    EndNumberset,
+    NumberRange(u64, u64),
 }
 
 impl<'a> Token<'a> {
@@ -294,6 +367,9 @@ impl<'a> Token<'a> {
             Token::StartGroup => false,
             Token::EndGroup => true,
             Token::Or => false,
+            Token::StartNumberset(_) => false,
+            Token::EndNumberset => false,
+            Token::NumberRange(_, _) => true,
         }
     }
     
@@ -305,6 +381,9 @@ impl<'a> Token<'a> {
             Token::StartGroup => true,
             Token::EndGroup => false,
             Token::Or => true,
+            Token::StartNumberset(_) => true,
+            Token::EndNumberset => false,
+            Token::NumberRange(_, _) => false,
         }
     }
 }
@@ -435,10 +514,6 @@ impl Tokenizer {
     }
     
     fn parse_one_element<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
-        /*
-        number
-         */
-        
         if parser.has(syntax::START_NONTERMINAL) {
             let nonterm = self.parse_nonterminal(parser)?;
             tokens.push(Token::NonTerminal(nonterm));
@@ -449,11 +524,24 @@ impl Tokenizer {
             self.parse_group(parser, tokens)?;
         } else if parser.has(syntax::OPERATOR_OR) {
             self.parse_or(parser, tokens)?;
+        } else if self.has_numberset(parser) {
+            self.parse_numberset(parser, tokens)?;
         } else {
-            todo!();
+            return Err(ParsingError::unexpected_element(parser));
         }
         
         Ok(())
+    }
+    
+    fn has_numberset(&mut self, parser: &mut Parser) -> bool {
+        parser.has(syntax::TYPE_U8) ||
+        parser.has(syntax::TYPE_I8) ||
+        parser.has(syntax::TYPE_U16) ||
+        parser.has(syntax::TYPE_I16) ||
+        parser.has(syntax::TYPE_U32) ||
+        parser.has(syntax::TYPE_I32) ||
+        parser.has(syntax::TYPE_U64) ||
+        parser.has(syntax::TYPE_I64)
     }
     
     fn parse_string(&mut self, parser: &mut Parser) -> Result<Vec<u8>, ParsingError> {
@@ -553,5 +641,85 @@ impl Tokenizer {
         tokens.push(Token::Or);
         
         Ok(())
+    }
+    
+    fn parse_numberset<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+        let mut num_elements = 0;
+        let typ = if parser.expect(syntax::TYPE_U8) {
+            NumberType::U8
+        } else if parser.expect(syntax::TYPE_I8) {
+            NumberType::I8
+        } else if parser.expect(syntax::TYPE_U16) {
+            NumberType::U16
+        } else if parser.expect(syntax::TYPE_I16) {
+            NumberType::I16
+        } else if parser.expect(syntax::TYPE_U32) {
+            NumberType::U32
+        } else if parser.expect(syntax::TYPE_I32) {
+            NumberType::I32
+        } else if parser.expect(syntax::TYPE_U64) {
+            NumberType::U64
+        } else if parser.expect(syntax::TYPE_I64) {
+            NumberType::I64
+        } else {
+            unreachable!()
+        };
+        
+        if !parser.expect(syntax::START_NUMBERSET) {
+            todo!()
+        }
+        
+        tokens.push(Token::StartNumberset(typ.clone()));
+        
+        loop {
+            parser.skip_fn(syntax::is_whitespace_nl);
+            
+            let value = self.parse_number(parser, &typ)?;
+            
+            if parser.expect(syntax::OPERATOR_RANGE) {
+                let other_value = self.parse_number(parser, &typ)?;
+                tokens.push(Token::NumberRange(value, other_value));
+            } else {
+                tokens.push(Token::NumberRange(value, value));
+            }
+            
+            num_elements += 1;
+            
+            if !parser.expect(syntax::OPERATOR_SET_SEPARATOR) {
+                break;
+            }
+        }
+        
+        parser.skip_fn(syntax::is_whitespace_nl);
+        
+        if !parser.expect(syntax::END_NUMBERSET) {
+            todo!()
+        } else if num_elements == 0 {
+            todo!()
+        }
+        
+        tokens.push(Token::EndNumberset);
+        
+        Ok(())
+    }
+    
+    fn parse_number(&mut self, parser: &mut Parser, typ: &NumberType) -> Result<u64, ParsingError> {
+        if parser.expect(syntax::PREFIX_HEXADECIMAL) {
+            let Some(hexstring) = parser.collect(|c| c.is_ascii_hexdigit()) else {
+                todo!()
+            };
+            let Some(value) = typ.parse_hexadecimal(hexstring) else {
+                todo!()
+            };
+            Ok(value)
+        } else {
+            let Some(string) = parser.collect(|c| c.is_ascii_digit() || c == '-') else {
+                todo!()
+            };
+            let Some(value) = typ.parse_decimal(string) else {
+                todo!()
+            };
+            Ok(value)
+        }
     }
 }
