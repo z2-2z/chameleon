@@ -196,6 +196,9 @@ pub enum ParsingErrorKind {
     
     #[error("Invalid string: {0}")]
     InvalidString(&'static str),
+    
+    #[error("Group does not contain any elements")]
+    EmptyGroup,
 }
 
 #[derive(Debug)]
@@ -249,6 +252,15 @@ impl ParsingError {
             kind: ParsingErrorKind::InvalidString(description),
         }
     }
+    
+    fn empty_group(parser: &Parser, start: usize) -> Self {
+        let start = parser.offset(start);
+        
+        Self {
+            range: start..start + syntax::START_GROUP.len(),
+            kind: ParsingErrorKind::EmptyGroup,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -256,24 +268,22 @@ pub enum Token<'a> {
     StartRule(&'a str),
     NonTerminal(&'a str),
     String(Vec<u8>),
+    StartGroup,
+    EndGroup,
 }
 
 pub struct Tokenizer {
-    
+    group_level: usize,
 }
 
 impl Tokenizer {
     pub fn new() -> Self {
-        Self {}
-    }
-    
-    fn reset(&mut self) {
-        
+        Self {
+            group_level: 0,
+        }
     }
     
     pub fn tokenize<'a>(&mut self, content: &'a str) -> Result<Vec<Token<'a>>, ParsingError> {
-        self.reset();
-        
         let mut parser = Parser::new(content);
         let mut tokens = Vec::new();
         
@@ -390,7 +400,6 @@ impl Tokenizer {
     fn parse_one_element<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
         /*
         number
-        brackets
         or
          */
         
@@ -400,6 +409,8 @@ impl Tokenizer {
         } else if parser.has(syntax::START_STRING) {
             let string = self.parse_string(parser)?;
             tokens.push(Token::String(string));
+        } else if parser.has(syntax::START_GROUP) {
+            self.parse_group(parser, tokens)?;
         } else {
             todo!();
         }
@@ -460,5 +471,34 @@ impl Tokenizer {
         parser.skip_char();
         let second = parser.current_char()?.to_digit(16)?;
         Some((first * 16 + second) as u8)
+    }
+    
+    fn parse_group<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+        let mut num_elements = 0;
+        let start_group = parser.cursor();
+        
+        parser.skip_str(syntax::START_GROUP);
+        self.group_level += 1;
+        tokens.push(Token::StartGroup);
+        
+        loop {
+            parser.skip_fn(syntax::is_whitespace_nl);
+            
+            if parser.expect(syntax::END_GROUP) {
+                break;
+            } else {
+                self.parse_one_element(parser, tokens)?;
+                num_elements += 1;
+            }
+        }
+        
+        if num_elements == 0 {
+            return Err(ParsingError::empty_group(parser, start_group));
+        }
+        
+        tokens.push(Token::EndGroup);
+        self.group_level -= 1;
+        
+        Ok(())
     }
 }
