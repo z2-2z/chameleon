@@ -1,8 +1,8 @@
 /* comment /* nested comment */ */
-<NONTERMINAL> => u64<1..3> "asdfdsa" <OTHER_NONTERM>
+<NONTERMINAL> => u64{1..3} "asdfdsa" <OTHER_NONTERM>
 <NONTERMINAL> => ((<A> <B>) || <B>) <C> || <D>
-<HEXPATTERNS> => i16<0x8000..0xFFFF>
-<SINGLE_NUMBERS> => i8<3, 7, 9, 12>
+<HEXPATTERNS> => i16{0x8000..0xFFFF}
+<SINGLE_NUMBERS> => i8{3, 7, 9, 12}
 <MULTI-LINE> => (
     (<A> <B> <C> <D>) ||
     (<E> <F>)

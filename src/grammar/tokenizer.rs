@@ -544,7 +544,7 @@ impl Tokenizer {
     
     fn parse_or<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
         if self.group_level == 0 {
-            return Err(ParsingError::or_error(parser, "For clarity the OR operator is only allowed inside a group"));
+            return Err(ParsingError::or_error(parser, "For clarity, the OR operator is only allowed inside a group"));
         } else if !tokens.last().unwrap().has_content() {
             return Err(ParsingError::or_error(parser, "OR is not separating elements"));
         }
