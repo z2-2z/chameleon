@@ -368,7 +368,7 @@ impl<'a> Token<'a> {
             Token::EndGroup => true,
             Token::Or => false,
             Token::StartNumberset(_) => false,
-            Token::EndNumberset => false,
+            Token::EndNumberset => true,
             Token::NumberRange(_, _) => true,
         }
     }
@@ -664,6 +664,8 @@ impl Tokenizer {
         } else {
             unreachable!()
         };
+        
+        parser.skip_fn(syntax::is_whitespace);
         
         if !parser.expect(syntax::START_NUMBERSET) {
             todo!()
