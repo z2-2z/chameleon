@@ -193,6 +193,9 @@ pub enum ParsingErrorKind {
     
     #[error("No symbols were supplied on the right-hand side of the rule")]
     MissingRhs,
+    
+    #[error("Invalid string: {0}")]
+    InvalidString(&'static str),
 }
 
 #[derive(Debug)]
@@ -235,6 +238,15 @@ impl ParsingError {
         Self {
             range: start..start + 1,
             kind: ParsingErrorKind::MissingRhs,
+        }
+    }
+    
+    fn invalid_string(parser: &Parser, description: &'static str) -> Self {
+        let start = parser.offset(parser.cursor());
+        
+        Self {
+            range: start..start + 1,
+            kind: ParsingErrorKind::InvalidString(description),
         }
     }
 }
@@ -386,7 +398,8 @@ impl Tokenizer {
             let nonterm = self.parse_nonterminal(parser)?;
             tokens.push(Token::NonTerminal(nonterm));
         } else if parser.has(syntax::START_STRING) {
-            self.parse_string(parser, tokens)?;
+            let string = self.parse_string(parser)?;
+            tokens.push(Token::String(string));
         } else {
             todo!();
         }
@@ -394,7 +407,7 @@ impl Tokenizer {
         Ok(())
     }
     
-    fn parse_string<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+    fn parse_string(&mut self, parser: &mut Parser) -> Result<Vec<u8>, ParsingError> {
         let mut buf = [0; 4];
         let mut result = Vec::new();
         
@@ -402,10 +415,9 @@ impl Tokenizer {
         
         while let Some(c) = parser.current_char() {
             if parser.expect(syntax::END_STRING) {
-                tokens.push(Token::String(result));
-                return Ok(());
+                return Ok(result);
             } else if syntax::is_forbidden_in_string(c) {
-                todo!("unterminated string error")
+                return Err(ParsingError::invalid_string(parser, "Newlines are forbidden in a string"));
             }
             
             if c == '\\' {
@@ -418,12 +430,10 @@ impl Tokenizer {
             parser.skip_char();
         }
         
-        todo!("Error unclosed string")
+        Err(ParsingError::invalid_string(parser, "String was not closed"))
     }
     
-    fn parse_escape_character<'a>(&mut self, parser: &mut Parser<'a>) -> Result<u8, ParsingError> {
-        //let start_character = parser.cursor();
-        
+    fn parse_escape_character(&mut self, parser: &mut Parser) -> Result<u8, ParsingError> {
         parser.skip_str("\\");
         
         match parser.current_char() {
@@ -439,12 +449,16 @@ impl Tokenizer {
             Some('"') => Ok(b'"'),
             Some('x') => {
                 parser.skip_char();
-                
-                let Some(hexstring) = parser.consume(2) else { todo!() };
-                
-                u8::from_str_radix(hexstring, 16).map_err(|_| todo!())
+                self.parse_hexdigits(parser).ok_or_else(|| ParsingError::invalid_string(parser, "Expected two hexademical digits"))
             },
-            _ => todo!(),
+            _ => Err(ParsingError::invalid_string(parser, "Invalid escape character")),
         }
+    }
+    
+    fn parse_hexdigits(&mut self, parser: &mut Parser) -> Option<u8> {
+        let first = parser.current_char()?.to_digit(16)?;
+        parser.skip_char();
+        let second = parser.current_char()?.to_digit(16)?;
+        Some((first * 16 + second) as u8)
     }
 }
