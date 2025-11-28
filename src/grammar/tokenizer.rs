@@ -167,17 +167,6 @@ impl<'a> Parser<'a> {
             false
         }
     }
-    
-    fn consume(&mut self, n: usize) -> Option<&'a str> {
-        let start = self.cursor;
-        let ret = self.view.str_at(start..start + n);
-        
-        if ret.is_some() {
-            self.cursor += n;
-        }
-        
-        ret
-    }
 }
 
 #[derive(Debug, Error)]
@@ -205,6 +194,15 @@ pub enum ParsingErrorKind {
     
     #[error("Encountered an unexpected element")]
     UnexpectedElement,
+    
+    #[error("Invalid numberset: {0}")]
+    InvalidNumberset(&'static str),
+    
+    #[error("Invalid number: {0}")]
+    InvalidNumber(&'static str),
+    
+    #[error("Expected a rule definition")]
+    MissingRule,
 }
 
 #[derive(Debug)]
@@ -285,6 +283,33 @@ impl ParsingError {
             kind: ParsingErrorKind::UnexpectedElement,
         }
     }
+    
+    fn invalid_numberset(parser: &Parser, start: usize, description: &'static str) -> Self {
+        let start = parser.offset(start);
+        
+        Self {
+            range: start..start + 1,
+            kind: ParsingErrorKind::InvalidNumberset(description),
+        }
+    }
+    
+    fn invalid_number(parser: &Parser, start: usize, description: &'static str) -> Self {
+        let start = parser.offset(start);
+        
+        Self {
+            range: start..start + 1,
+            kind: ParsingErrorKind::InvalidNumber(description),
+        }
+    }
+    
+    fn missing_rule(parser: &Parser) -> Self {
+        let start = parser.offset(parser.cursor());
+        
+        Self {
+            range: start..start + 1,
+            kind: ParsingErrorKind::MissingRule,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -348,6 +373,7 @@ impl NumberType {
 #[derive(Debug)]
 pub enum Token<'a> {
     StartRule(&'a str),
+    EndRule,
     NonTerminal(&'a str),
     String(Vec<u8>),
     StartGroup,
@@ -362,6 +388,7 @@ impl<'a> Token<'a> {
     fn has_content(&self) -> bool {
         match self {
             Token::StartRule(_) => false,
+            Token::EndRule => false,
             Token::NonTerminal(_) => true,
             Token::String(_) => true,
             Token::StartGroup => false,
@@ -376,6 +403,7 @@ impl<'a> Token<'a> {
     fn needs_following_content(&self) -> bool {
         match self {
             Token::StartRule(_) => true,
+            Token::EndRule => false,
             Token::NonTerminal(_) => false,
             Token::String(_) => false,
             Token::StartGroup => true,
@@ -419,7 +447,7 @@ impl Tokenizer {
             } else if parser.has(syntax::START_NONTERMINAL) {
                 self.parse_rule_definition(parser, tokens)?;
             } else {
-                todo!("Encountered invalid thing error");
+                return Err(ParsingError::missing_rule(parser));
             }
         }
         
@@ -498,6 +526,7 @@ impl Tokenizer {
             }
         }
         
+        tokens.push(Token::EndRule);
         Ok(())
     }
     
@@ -634,7 +663,7 @@ impl Tokenizer {
         if self.group_level == 0 {
             return Err(ParsingError::or_error(parser, "For clarity, the OR operator is only allowed inside a group"));
         } else if !tokens.last().unwrap().has_content() {
-            return Err(ParsingError::or_error(parser, "OR is not separating elements"));
+            return Err(ParsingError::or_error(parser, "OR is not separating elements with content"));
         }
         
         parser.skip_str(syntax::OPERATOR_OR);
@@ -645,6 +674,7 @@ impl Tokenizer {
     
     fn parse_numberset<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
         let mut num_elements = 0;
+        
         let typ = if parser.expect(syntax::TYPE_U8) {
             NumberType::U8
         } else if parser.expect(syntax::TYPE_I8) {
@@ -667,8 +697,10 @@ impl Tokenizer {
         
         parser.skip_fn(syntax::is_whitespace);
         
+        let start_numberset = parser.cursor();
+        
         if !parser.expect(syntax::START_NUMBERSET) {
-            todo!()
+            return Err(ParsingError::invalid_numberset(parser, start_numberset, "Numberset is missing"));
         }
         
         tokens.push(Token::StartNumberset(typ.clone()));
@@ -695,9 +727,9 @@ impl Tokenizer {
         parser.skip_fn(syntax::is_whitespace_nl);
         
         if !parser.expect(syntax::END_NUMBERSET) {
-            todo!()
+            return Err(ParsingError::invalid_numberset(parser, start_numberset, "Missing end of numberset"));
         } else if num_elements == 0 {
-            todo!()
+            return Err(ParsingError::invalid_numberset(parser, start_numberset, "Numberset is empty"));
         }
         
         tokens.push(Token::EndNumberset);
@@ -706,20 +738,22 @@ impl Tokenizer {
     }
     
     fn parse_number(&mut self, parser: &mut Parser, typ: &NumberType) -> Result<u64, ParsingError> {
+        let start_number = parser.cursor();
+        
         if parser.expect(syntax::PREFIX_HEXADECIMAL) {
             let Some(hexstring) = parser.collect(|c| c.is_ascii_hexdigit()) else {
-                todo!()
+                return Err(ParsingError::invalid_number(parser, start_number, "Missing hexadecimal digits"));
             };
             let Some(value) = typ.parse_hexadecimal(hexstring) else {
-                todo!()
+                return Err(ParsingError::invalid_number(parser, start_number, "Invalid hexadecimal number"));
             };
             Ok(value)
         } else {
             let Some(string) = parser.collect(|c| c.is_ascii_digit() || c == '-') else {
-                todo!()
+                return Err(ParsingError::invalid_number(parser, start_number, "Missing decimal digits"));
             };
             let Some(value) = typ.parse_decimal(string) else {
-                todo!()
+                return Err(ParsingError::invalid_number(parser, start_number, "Invalid decimal number"));
             };
             Ok(value)
         }
