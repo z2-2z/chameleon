@@ -203,6 +203,9 @@ pub enum ParsingErrorKind {
     
     #[error("Expected a rule definition")]
     MissingRule,
+    
+    #[error("Invalid namespace: {0}")]
+    InvalidNamespace(&'static str),
 }
 
 #[derive(Debug)]
@@ -310,6 +313,15 @@ impl ParsingError {
             kind: ParsingErrorKind::MissingRule,
         }
     }
+    
+    fn invalid_namespace(parser: &Parser, start: usize, description: &'static str) -> Self {
+        let start = parser.offset(start);
+        
+        Self {
+            range: start..start + 1,
+            kind: ParsingErrorKind::InvalidNamespace(description),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -372,9 +384,9 @@ impl NumberType {
 
 #[derive(Debug)]
 pub enum Token<'a> {
-    StartRule(&'a str),
+    StartRule(String),
     EndRule,
-    NonTerminal(&'a str),
+    NonTerminal(String),
     String(Vec<u8>),
     StartGroup,
     EndGroup,
@@ -382,6 +394,7 @@ pub enum Token<'a> {
     StartNumberset(NumberType),
     EndNumberset,
     NumberRange(u64, u64),
+    SetNamespace(&'a str),
 }
 
 impl<'a> Token<'a> {
@@ -397,6 +410,7 @@ impl<'a> Token<'a> {
             Token::StartNumberset(_) => false,
             Token::EndNumberset => true,
             Token::NumberRange(_, _) => true,
+            Token::SetNamespace(_) => false,
         }
     }
     
@@ -412,25 +426,34 @@ impl<'a> Token<'a> {
             Token::StartNumberset(_) => true,
             Token::EndNumberset => false,
             Token::NumberRange(_, _) => false,
+            Token::SetNamespace(_) => false,
         }
     }
 }
 
 pub struct Tokenizer {
     group_level: usize,
+    namespace: Option<String>,
 }
 
 impl Tokenizer {
     pub fn new() -> Self {
         Self {
             group_level: 0,
+            namespace: None,
         }
+    }
+    
+    fn reset(&mut self) {
+        self.group_level = 0;
+        self.namespace = None;
     }
     
     pub fn tokenize<'a>(&mut self, content: &'a str) -> Result<Vec<Token<'a>>, ParsingError> {
         let mut parser = Parser::new(content);
         let mut tokens = Vec::new();
         
+        self.reset();
         self.parse_top_level(&mut parser, &mut tokens)?;
         
         Ok(tokens)
@@ -446,6 +469,8 @@ impl Tokenizer {
                 self.skip_comment(parser)?;
             } else if parser.has(syntax::START_NONTERMINAL) {
                 self.parse_rule_definition(parser, tokens)?;
+            } else if parser.has(syntax::DIRECTIVE_NAMESPACE) {
+                self.parse_namespace(parser, tokens)?;
             } else {
                 return Err(ParsingError::missing_rule(parser));
             }
@@ -492,6 +517,13 @@ impl Tokenizer {
     fn parse_rule_definition<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
         /* Left-hand side: a non-terminal */
         let nonterm = self.parse_nonterminal(parser)?;
+        
+        let nonterm = if let Some(namespace) = &self.namespace {
+            format!("{namespace}{0}{nonterm}", syntax::OPERATOR_NAMESPACE_SEPARATOR)
+        } else {
+            nonterm.to_owned()
+        };
+        
         tokens.push(Token::StartRule(nonterm));
         
         /* Then, a separator */
@@ -533,9 +565,11 @@ impl Tokenizer {
     fn parse_nonterminal<'a>(&mut self, parser: &mut Parser<'a>) -> Result<&'a str, ParsingError> {
         parser.skip_str(syntax::START_NONTERMINAL);
         
-        let nonterm = parser.collect(syntax::is_nonterminal).unwrap_or("");
+        let Some(nonterm) = parser.collect(syntax::is_nonterminal) else {
+            return Err(ParsingError::invalid_nonterminal(parser));
+        };
         
-        if nonterm.is_empty() || !parser.expect(syntax::END_NONTERMINAL) {
+        if !parser.expect(syntax::END_NONTERMINAL) {
             return Err(ParsingError::invalid_nonterminal(parser));
         }
         
@@ -545,6 +579,11 @@ impl Tokenizer {
     fn parse_one_element<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
         if parser.has(syntax::START_NONTERMINAL) {
             let nonterm = self.parse_nonterminal(parser)?;
+            let nonterm = if !nonterm.contains(syntax::OPERATOR_NAMESPACE_SEPARATOR) && let Some(namespace) = &self.namespace {
+                format!("{namespace}{0}{nonterm}", syntax::OPERATOR_NAMESPACE_SEPARATOR)
+            } else {
+                nonterm.to_owned()
+            };
             tokens.push(Token::NonTerminal(nonterm));
         } else if parser.has(syntax::START_STRING) {
             let string = self.parse_string(parser)?;
@@ -757,5 +796,28 @@ impl Tokenizer {
             };
             Ok(value)
         }
+    }
+    
+    fn parse_namespace<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+        let start_namespace = parser.cursor();
+        
+        parser.skip_str(syntax::DIRECTIVE_NAMESPACE);
+        
+        parser.skip_fn(syntax::is_whitespace);
+        
+        let Some(name) = parser.collect(syntax::is_nonterminal) else {
+            return Err(ParsingError::invalid_namespace(parser, start_namespace, "Invalid name for namespace"));
+        };
+        
+        self.namespace = Some(name.to_owned());
+        tokens.push(Token::SetNamespace(name));
+        
+        parser.skip_fn(syntax::is_whitespace);
+        
+        if !parser.expect(syntax::END_RULE) {
+            return Err(ParsingError::invalid_namespace(parser, start_namespace, "Invalid namespace definition"));
+        }
+        
+        Ok(())
     }
 }

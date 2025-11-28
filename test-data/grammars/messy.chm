@@ -1,7 +1,11 @@
-<X> => ((<A>) || "a")
+namespace STD
+
+<X> => ((<OTHER::A>) || "a")
 <Y> => ((
-    <Y> "" "東" "0\xff"
+    <Y> 
 ) ((<Z>)))
+
+<STRINGS> => "" "東" "\xff"
 
 <NUMBERS> => (
     i8 {
@@ -13,3 +17,6 @@
         0x0
     }
 )
+
+namespace SECOND
+<YEET> => (<STD::NUMBERS> || "")

@@ -7,7 +7,7 @@ pub fn is_whitespace_nl(c: char) -> bool {
 }
 
 pub fn is_nonterminal(c: char) -> bool {
-    c.is_ascii_uppercase() || c.is_ascii_digit() || matches!(c, '-' | '_')
+    c.is_ascii_lowercase() || c.is_ascii_uppercase() || c.is_ascii_digit() || matches!(c, '-' | '_' | ':')
 }
 
 pub fn is_forbidden_in_string(c: char) -> bool {
@@ -38,3 +38,5 @@ pub const END_NUMBERSET: &str = "}";
 pub const PREFIX_HEXADECIMAL: &str = "0x";
 pub const OPERATOR_RANGE: &str = "..";
 pub const OPERATOR_SET_SEPARATOR: &str = ",";
+pub const DIRECTIVE_NAMESPACE: &str = "namespace";
+pub const OPERATOR_NAMESPACE_SEPARATOR: &str = "::";
