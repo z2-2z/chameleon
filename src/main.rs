@@ -15,15 +15,19 @@ enum Commands {
     /// Verifies that a grammar file is syntactically valid
     Check {
         /// Path to grammar file
-        grammar: String,
+        grammar: Vec<String>,
     },
 }
 
-fn check(grammar: String) -> Result<()> {
-    let mut t = grammar::tokenizer::Tokenizer::new();
-    let content = std::fs::read_to_string(&grammar)?;
-    let v = t.tokenize(&content);
-    println!("{:#?}", v);
+fn check(grammars: Vec<String>) -> Result<()> {
+    let mut builder = grammar::ContextFreeGrammar::builder();
+    
+    for grammar in grammars {
+        builder.load_grammar(&grammar);
+    }
+    
+    builder.build();
+    
     Ok(())
 }
 

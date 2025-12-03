@@ -5,6 +5,9 @@ use crate::grammar::syntax;
 struct StringView<'a> {
     bytes: &'a [u8],
     indices: Vec<usize>,
+    last_line: usize,
+    last_column: usize,
+    last_index: usize,
 }
 
 impl<'a> StringView<'a> {
@@ -15,6 +18,9 @@ impl<'a> StringView<'a> {
         Self {
             bytes: string.as_bytes(),
             indices,
+            last_line: 1,
+            last_column: 0,
+            last_index: 0,
         }
     }
     
@@ -62,6 +68,26 @@ impl<'a> StringView<'a> {
     
     fn converted_len(s: &str) -> usize {
         s.chars().count()
+    }
+    
+    fn get_metadata(&mut self, index: usize) -> TokenMetadata {
+        assert!(index >= self.last_index);
+        
+        while self.last_index <= index {
+            if self.bytes.get(self.indices[self.last_index]) == Some(&b'\n') {
+                self.last_line += 1;
+                self.last_column = 0;
+            } else {
+                self.last_column += 1;
+            }
+            
+            self.last_index += 1;
+        }
+        
+        TokenMetadata {
+            line: self.last_line,
+            column: self.last_column,
+        }
     }
 }
 
@@ -166,6 +192,10 @@ impl<'a> Parser<'a> {
         } else {
             false
         }
+    }
+    
+    fn metadata(&mut self) -> TokenMetadata {
+        self.view.get_metadata(self.cursor)
     }
 }
 
@@ -383,10 +413,16 @@ impl NumberType {
 }
 
 #[derive(Debug)]
+pub struct TokenMetadata {
+    pub line: usize,
+    pub column: usize,
+}
+
+#[derive(Debug)]
 pub enum Token<'a> {
     StartRule(String),
     EndRule,
-    NonTerminal(String),
+    NonTerminal(TokenMetadata, String),
     String(Vec<u8>),
     StartGroup,
     EndGroup,
@@ -402,7 +438,7 @@ impl<'a> Token<'a> {
         match self {
             Token::StartRule(_) => false,
             Token::EndRule => false,
-            Token::NonTerminal(_) => true,
+            Token::NonTerminal(_, _) => true,
             Token::String(_) => true,
             Token::StartGroup => false,
             Token::EndGroup => true,
@@ -418,7 +454,7 @@ impl<'a> Token<'a> {
         match self {
             Token::StartRule(_) => true,
             Token::EndRule => false,
-            Token::NonTerminal(_) => false,
+            Token::NonTerminal(_, _) => false,
             Token::String(_) => false,
             Token::StartGroup => true,
             Token::EndGroup => false,
@@ -578,13 +614,14 @@ impl Tokenizer {
     
     fn parse_one_element<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
         if parser.has(syntax::START_NONTERMINAL) {
+            let metadata = parser.metadata();
             let nonterm = self.parse_nonterminal(parser)?;
             let nonterm = if !nonterm.contains(syntax::OPERATOR_NAMESPACE_SEPARATOR) && let Some(namespace) = &self.namespace {
                 format!("{namespace}{0}{nonterm}", syntax::OPERATOR_NAMESPACE_SEPARATOR)
             } else {
                 nonterm.to_owned()
             };
-            tokens.push(Token::NonTerminal(nonterm));
+            tokens.push(Token::NonTerminal(metadata, nonterm));
         } else if parser.has(syntax::START_STRING) {
             let string = self.parse_string(parser)?;
             tokens.push(Token::String(string));
