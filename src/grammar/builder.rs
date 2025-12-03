@@ -2,6 +2,7 @@ use crate::grammar::{
     cfg::ContextFreeGrammar,
     tokenizer::Tokenizer,
 };
+use anyhow::Result;
 
 pub struct GrammarBuilder {
     
@@ -12,11 +13,11 @@ impl GrammarBuilder {
         Self {}
     }
     
-    pub fn load_grammar(&mut self, path: &str) {
-        let mut t = Tokenizer::new();
-        let content = std::fs::read_to_string(path).unwrap();
-        let v = t.tokenize(&content);
-        println!("{:#?}", v);
+    pub fn load_grammar(&mut self, path: &str) -> Result<()> {
+        let content = std::fs::read_to_string(path)?;
+        let tokens = Tokenizer::new().tokenize(&content)?;
+        println!("{:#?}", tokens);
+        Ok(())
     }
     
     pub fn build(self) -> ContextFreeGrammar {

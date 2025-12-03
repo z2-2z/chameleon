@@ -2,6 +2,12 @@ use std::ops::Range;
 use thiserror::Error;
 use crate::grammar::syntax;
 
+#[derive(Debug)]
+pub struct TextMetadata {
+    pub line: usize,
+    pub column: usize,
+}
+
 struct StringView<'a> {
     bytes: &'a [u8],
     indices: Vec<usize>,
@@ -27,11 +33,6 @@ impl<'a> StringView<'a> {
     #[inline]
     fn len(&self) -> usize {
         self.indices.len() - 1
-    }
-    
-    fn offset(&self, index: usize) -> usize {
-        let index = std::cmp::min(index, self.len());
-        self.indices[index]
     }
     
     fn char_at(&self, index: usize) -> Option<char> {
@@ -70,7 +71,7 @@ impl<'a> StringView<'a> {
         s.chars().count()
     }
     
-    fn get_metadata(&mut self, index: usize) -> TokenMetadata {
+    fn get_metadata(&mut self, index: usize) -> TextMetadata {
         assert!(index >= self.last_index);
         
         while self.last_index <= index {
@@ -84,7 +85,7 @@ impl<'a> StringView<'a> {
             self.last_index += 1;
         }
         
-        TokenMetadata {
+        TextMetadata {
             line: self.last_line,
             column: self.last_column,
         }
@@ -128,10 +129,6 @@ impl<'a> Parser<'a> {
     
     fn cursor(&self) -> usize {
         self.cursor
-    }
-    
-    fn offset(&self, offset: usize) -> usize {
-        self.view.offset(offset)
     }
     
     fn eof(&self) -> bool {
@@ -194,8 +191,8 @@ impl<'a> Parser<'a> {
         }
     }
     
-    fn metadata(&mut self) -> TokenMetadata {
-        self.view.get_metadata(self.cursor)
+    fn metadata(&mut self, offset: usize) -> TextMetadata {
+        self.view.get_metadata(offset)
     }
 }
 
@@ -238,117 +235,94 @@ pub enum ParsingErrorKind {
     InvalidNamespace(&'static str),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("Error while parsing grammar in line {}:{}: {}", meta.line, meta.column, kind)]
 pub struct ParsingError {
-    range: Range<usize>,
+    meta: TextMetadata,
     kind: ParsingErrorKind,
 }
 
 impl ParsingError {
-    fn unclosed_comment(parser: &Parser, start: usize) -> Self {
-        let start = parser.offset(start);
-        
+    fn unclosed_comment(parser: &mut Parser, start: usize) -> Self {
         Self {
-            range: start..start + syntax::START_COMMENT.len(),
+            meta: parser.metadata(start),
             kind: ParsingErrorKind::UnclosedComment,
         }
     }
     
-    fn invalid_nonterminal(parser: &Parser) -> Self {
-        let start = parser.offset(parser.cursor());
-        
+    fn invalid_nonterminal(parser: &mut Parser) -> Self {
         Self {
-            range: start..start + 1,
+            meta: parser.metadata(parser.cursor()),
             kind: ParsingErrorKind::InvalidNonterminal,
         }
     }
     
-    fn missing_separator(parser: &Parser) -> Self {
-        let start = parser.offset(parser.cursor());
-        
+    fn missing_separator(parser: &mut Parser) -> Self {
         Self {
-            range: start..start + 1,
+            meta: parser.metadata(parser.cursor()),
             kind: ParsingErrorKind::MissingSeparator,
         }
     }
     
-    fn missing_rhs(parser: &Parser) -> Self {
-        let start = parser.offset(parser.cursor());
-        
+    fn missing_rhs(parser: &mut Parser) -> Self {
         Self {
-            range: start..start + 1,
+            meta: parser.metadata(parser.cursor()),
             kind: ParsingErrorKind::MissingRhs,
         }
     }
     
-    fn invalid_string(parser: &Parser, description: &'static str) -> Self {
-        let start = parser.offset(parser.cursor());
-        
+    fn invalid_string(parser: &mut Parser, description: &'static str) -> Self {
         Self {
-            range: start..start + 1,
+            meta: parser.metadata(parser.cursor()),
             kind: ParsingErrorKind::InvalidString(description),
         }
     }
     
-    fn invalid_group(parser: &Parser, start: usize, description: &'static str) -> Self {
-        let start = parser.offset(start);
-        
+    fn invalid_group(parser: &mut Parser, start: usize, description: &'static str) -> Self {
         Self {
-            range: start..start + syntax::START_GROUP.len(),
+            meta: parser.metadata(start),
             kind: ParsingErrorKind::InvalidGroup(description),
         }
     }
     
-    fn or_error(parser: &Parser, description: &'static str) -> Self {
-        let start = parser.offset(parser.cursor());
-        
+    fn or_error(parser: &mut Parser, description: &'static str) -> Self {
         Self {
-            range: start..start + syntax::OPERATOR_OR.len(),
+            meta: parser.metadata(parser.cursor()),
             kind: ParsingErrorKind::OrError(description),
         }
     }
     
-    fn unexpected_element(parser: &Parser) -> Self {
-        let start = parser.offset(parser.cursor());
-        
+    fn unexpected_element(parser: &mut Parser) -> Self {
         Self {
-            range: start..start + 1,
+            meta: parser.metadata(parser.cursor()),
             kind: ParsingErrorKind::UnexpectedElement,
         }
     }
     
-    fn invalid_numberset(parser: &Parser, start: usize, description: &'static str) -> Self {
-        let start = parser.offset(start);
-        
+    fn invalid_numberset(parser: &mut Parser, start: usize, description: &'static str) -> Self {
         Self {
-            range: start..start + 1,
+            meta: parser.metadata(start),
             kind: ParsingErrorKind::InvalidNumberset(description),
         }
     }
     
-    fn invalid_number(parser: &Parser, start: usize, description: &'static str) -> Self {
-        let start = parser.offset(start);
-        
+    fn invalid_number(parser: &mut Parser, start: usize, description: &'static str) -> Self {
         Self {
-            range: start..start + 1,
+            meta: parser.metadata(start),
             kind: ParsingErrorKind::InvalidNumber(description),
         }
     }
     
-    fn missing_rule(parser: &Parser) -> Self {
-        let start = parser.offset(parser.cursor());
-        
+    fn missing_rule(parser: &mut Parser) -> Self {
         Self {
-            range: start..start + 1,
+            meta: parser.metadata(parser.cursor()),
             kind: ParsingErrorKind::MissingRule,
         }
     }
     
-    fn invalid_namespace(parser: &Parser, start: usize, description: &'static str) -> Self {
-        let start = parser.offset(start);
-        
+    fn invalid_namespace(parser: &mut Parser, start: usize, description: &'static str) -> Self {
         Self {
-            range: start..start + 1,
+            meta: parser.metadata(start),
             kind: ParsingErrorKind::InvalidNamespace(description),
         }
     }
@@ -413,16 +387,10 @@ impl NumberType {
 }
 
 #[derive(Debug)]
-pub struct TokenMetadata {
-    pub line: usize,
-    pub column: usize,
-}
-
-#[derive(Debug)]
 pub enum Token<'a> {
     StartRule(String),
     EndRule,
-    NonTerminal(TokenMetadata, String),
+    NonTerminal(TextMetadata, String),
     String(Vec<u8>),
     StartGroup,
     EndGroup,
@@ -480,16 +448,10 @@ impl Tokenizer {
         }
     }
     
-    fn reset(&mut self) {
-        self.group_level = 0;
-        self.namespace = None;
-    }
-    
     pub fn tokenize<'a>(&mut self, content: &'a str) -> Result<Vec<Token<'a>>, ParsingError> {
         let mut parser = Parser::new(content);
         let mut tokens = Vec::new();
         
-        self.reset();
         self.parse_top_level(&mut parser, &mut tokens)?;
         
         Ok(tokens)
@@ -614,7 +576,7 @@ impl Tokenizer {
     
     fn parse_one_element<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
         if parser.has(syntax::START_NONTERMINAL) {
-            let metadata = parser.metadata();
+            let metadata = parser.metadata(parser.cursor());
             let nonterm = self.parse_nonterminal(parser)?;
             let nonterm = if !nonterm.contains(syntax::OPERATOR_NAMESPACE_SEPARATOR) && let Some(namespace) = &self.namespace {
                 format!("{namespace}{0}{nonterm}", syntax::OPERATOR_NAMESPACE_SEPARATOR)
@@ -843,7 +805,7 @@ impl Tokenizer {
         parser.skip_fn(syntax::is_whitespace);
         
         let Some(name) = parser.collect(syntax::is_nonterminal) else {
-            return Err(ParsingError::invalid_namespace(parser, start_namespace, "Invalid name for namespace"));
+            return Err(ParsingError::invalid_namespace(parser, start_namespace, "Invalid namespace definition"));
         };
         
         self.namespace = Some(name.to_owned());
@@ -852,7 +814,7 @@ impl Tokenizer {
         parser.skip_fn(syntax::is_whitespace);
         
         if !parser.expect(syntax::END_RULE) {
-            return Err(ParsingError::invalid_namespace(parser, start_namespace, "Invalid namespace definition"));
+            return Err(ParsingError::invalid_namespace(parser, start_namespace, "Invalid name for namespace"));
         }
         
         Ok(())

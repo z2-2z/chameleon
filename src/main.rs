@@ -23,7 +23,7 @@ fn check(grammars: Vec<String>) -> Result<()> {
     let mut builder = grammar::ContextFreeGrammar::builder();
     
     for grammar in grammars {
-        builder.load_grammar(&grammar);
+        builder.load_grammar(&grammar)?;
     }
     
     builder.build();
