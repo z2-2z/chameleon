@@ -72,7 +72,7 @@ impl<'a> StringView<'a> {
     }
     
     fn get_metadata(&mut self, index: usize) -> TextMetadata {
-        assert!(index >= self.last_index);
+        assert!(index >= self.last_index.saturating_sub(1));
         
         while self.last_index <= index {
             if self.bytes.get(self.indices[self.last_index]) == Some(&b'\n') {
@@ -206,7 +206,7 @@ pub enum ParsingErrorKind {
     #[error("This comment was never closed")]
     UnclosedComment,
     
-    #[error("Invalid characters in non-terminal")]
+    #[error("Invalid non-terminal")]
     InvalidNonterminal,
     
     #[error("Expected a separator")]
@@ -258,9 +258,9 @@ impl ParsingError {
         }
     }
     
-    fn invalid_nonterminal(parser: &mut Parser) -> Self {
+    fn invalid_nonterminal(parser: &mut Parser, start: usize) -> Self {
         Self {
-            meta: parser.metadata(parser.cursor()),
+            meta: parser.metadata(start),
             kind: ParsingErrorKind::InvalidNonterminal,
         }
     }
@@ -528,7 +528,7 @@ impl Tokenizer {
     
     fn parse_rule_definition(&mut self, parser: &mut Parser, tokens: &mut Vec<Token>) -> Result<(), ParsingError> {
         /* Left-hand side: a non-terminal */
-        let nonterm = self.parse_nonterminal(parser)?;
+        let nonterm = self.parse_nonterminal(parser, true)?;
         
         let nonterm = if let Some(namespace) = &self.namespace {
             format!("{namespace}{0}{nonterm}", syntax::OPERATOR_NAMESPACE_SEPARATOR)
@@ -574,18 +574,36 @@ impl Tokenizer {
         Ok(())
     }
     
-    fn parse_nonterminal<'a>(&mut self, parser: &mut Parser<'a>) -> Result<&'a str, ParsingError> {
+    fn parse_nonterminal<'a>(&mut self, parser: &mut Parser<'a>, lhs: bool) -> Result<&'a str, ParsingError> {
+        let start_nonterminal = parser.cursor();
+        
         parser.skip_str(syntax::START_NONTERMINAL);
         
         let Some(nonterm) = parser.collect(syntax::is_nonterminal) else {
-            return Err(ParsingError::invalid_nonterminal(parser));
+            return Err(ParsingError::invalid_nonterminal(parser, start_nonterminal));
         };
         
-        // Check that nonterm has no consecutive namespace separators
+        /* Check that namespace separators are used correctly */
+        let mut last_match = false;
         
+        for w in nonterm.as_bytes().windows(syntax::OPERATOR_NAMESPACE_SEPARATOR.len()) {
+            if w == syntax::OPERATOR_NAMESPACE_SEPARATOR.as_bytes() {
+                if lhs || last_match {
+                    return Err(ParsingError::invalid_nonterminal(parser, start_nonterminal));
+                }
+                
+                last_match = true;
+            } else {
+                last_match = false;
+            }
+        }
+        
+        if last_match {
+            return Err(ParsingError::invalid_nonterminal(parser, start_nonterminal));
+        }
         
         if !parser.expect(syntax::END_NONTERMINAL) {
-            return Err(ParsingError::invalid_nonterminal(parser));
+            return Err(ParsingError::invalid_nonterminal(parser, start_nonterminal));
         }
         
         Ok(nonterm)
@@ -594,7 +612,7 @@ impl Tokenizer {
     fn parse_one_element(&mut self, parser: &mut Parser, tokens: &mut Vec<Token>) -> Result<(), ParsingError> {
         if parser.has(syntax::START_NONTERMINAL) {
             let metadata = parser.metadata(parser.cursor());
-            let nonterm = self.parse_nonterminal(parser)?;
+            let nonterm = self.parse_nonterminal(parser, false)?;
             let nonterm = if !nonterm.contains(syntax::OPERATOR_NAMESPACE_SEPARATOR) && let Some(namespace) = &self.namespace {
                 format!("{namespace}{0}{nonterm}", syntax::OPERATOR_NAMESPACE_SEPARATOR)
             } else if let Some(result) = nonterm.strip_prefix(syntax::OPERATOR_NAMESPACE_SEPARATOR) {
