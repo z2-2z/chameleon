@@ -19,6 +19,6 @@ no namespace
     }
 )
 
-namespace SECOND
+namespace STD::SECOND
 
-<YEET> => (<NUMBERS> || "")
+<YEET> => (<::NUMBERS> || "")

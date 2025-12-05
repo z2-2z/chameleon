@@ -581,6 +581,9 @@ impl Tokenizer {
             return Err(ParsingError::invalid_nonterminal(parser));
         };
         
+        // Check that nonterm has no consecutive namespace separators
+        
+        
         if !parser.expect(syntax::END_NONTERMINAL) {
             return Err(ParsingError::invalid_nonterminal(parser));
         }
@@ -594,6 +597,8 @@ impl Tokenizer {
             let nonterm = self.parse_nonterminal(parser)?;
             let nonterm = if !nonterm.contains(syntax::OPERATOR_NAMESPACE_SEPARATOR) && let Some(namespace) = &self.namespace {
                 format!("{namespace}{0}{nonterm}", syntax::OPERATOR_NAMESPACE_SEPARATOR)
+            } else if let Some(result) = nonterm.strip_prefix(syntax::OPERATOR_NAMESPACE_SEPARATOR) {
+                result.to_owned()
             } else {
                 nonterm.to_owned()
             };
