@@ -1,13 +1,13 @@
 namespace STD
 
-<X> => ((<OTHER::A>) || "a")
+<X> => (<OTHER::A> || "a" || "b")
 <Y> => ((
     <Y> 
 ) ((<Z>)))
 
 no namespace
 
-<STRINGS> => "" "東" "\xff"
+<STRINGS> => "" "東" "\xgf"
 <NUMBERS> => (
     i8 {
         -128..127,

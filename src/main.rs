@@ -30,7 +30,7 @@ fn check(grammars: Vec<String>) -> Result<()> {
         builder.load_grammar(&grammar)?;
     }
     
-    builder.build();
+    builder.check()?;
     
     Ok(())
 }

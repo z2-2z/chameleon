@@ -2,7 +2,7 @@ use std::ops::Range;
 use thiserror::Error;
 use crate::grammar::syntax;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TextMetadata {
     pub line: usize,
     pub column: usize,
@@ -203,7 +203,7 @@ impl<'a> Parser<'a> {
 
 #[derive(Debug, Error)]
 pub enum ParsingErrorKind {
-    #[error("This comment was never closed")]
+    #[error("Comment was never closed")]
     UnclosedComment,
     
     #[error("Invalid non-terminal")]
@@ -244,7 +244,7 @@ pub enum ParsingErrorKind {
 }
 
 #[derive(Debug, Error)]
-#[error("Error while parsing grammar in line {}:{}: {}", meta.line, meta.column, kind)]
+#[error("{} in line {}:{}", kind, meta.line, meta.column)]
 pub struct ParsingError {
     meta: TextMetadata,
     kind: ParsingErrorKind,
@@ -613,10 +613,10 @@ impl Tokenizer {
         if parser.has(syntax::START_NONTERMINAL) {
             let metadata = parser.metadata(parser.cursor());
             let nonterm = self.parse_nonterminal(parser, false)?;
-            let nonterm = if !nonterm.contains(syntax::OPERATOR_NAMESPACE_SEPARATOR) && let Some(namespace) = &self.namespace {
-                format!("{namespace}{0}{nonterm}", syntax::OPERATOR_NAMESPACE_SEPARATOR)
-            } else if let Some(result) = nonterm.strip_prefix(syntax::OPERATOR_NAMESPACE_SEPARATOR) {
+            let nonterm = if let Some(result) = nonterm.strip_prefix(syntax::OPERATOR_NAMESPACE_SEPARATOR) {
                 result.to_owned()
+            } else if !nonterm.contains(syntax::OPERATOR_NAMESPACE_SEPARATOR) && let Some(namespace) = &self.namespace {
+                format!("{namespace}{0}{nonterm}", syntax::OPERATOR_NAMESPACE_SEPARATOR)
             } else {
                 nonterm.to_owned()
             };

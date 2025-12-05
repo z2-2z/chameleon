@@ -41,3 +41,4 @@ pub const OPERATOR_SET_SEPARATOR: &str = ",";
 pub const DIRECTIVE_NAMESPACE: &str = "namespace";
 pub const OPERATOR_NAMESPACE_SEPARATOR: &str = "::";
 pub const DIRECTIVE_CLEAR: &str = "no";
+pub const ENTRYPOINT_RULE: &str = "ENTRYPOINT";
