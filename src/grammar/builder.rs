@@ -56,12 +56,12 @@ impl GrammarBuilder {
     pub fn build(self) -> Result<ContextFreeGrammar> {
         self.check()?;
         
-        println!("{:#?}", self.tokens);
-        
         todo!()
     }
     
     pub fn check(&self) -> Result<(), BuilderError> {
+        println!("{:#?}", self.tokens);
+        
         let mut rules: HashSet<&str> = HashSet::new();
         
         for tokens in self.tokens.values() {

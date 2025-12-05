@@ -1,5 +1,6 @@
 use std::ops::Range;
 use thiserror::Error;
+use std::collections::HashSet;
 use crate::grammar::syntax;
 
 #[derive(Debug, Clone)]
@@ -356,6 +357,16 @@ pub enum NumberType {
 }
 
 impl NumberType {
+    pub fn is_signed(&self) -> bool {
+        match self {
+            NumberType::I8 |
+            NumberType::I16 |
+            NumberType::I32 |
+            NumberType::I64 => true,
+            _ => false,
+        }
+    }
+    
     fn parse_decimal(&self, s: &str) -> Option<u64> {
         if s.is_empty() {
             return None;
@@ -465,7 +476,8 @@ impl Tokenizer {
         let mut tokens = Vec::new();
         
         self.parse_top_level(&mut parser, &mut tokens)?;
-        self.clean_tokens(&mut tokens);
+        
+        PostProcessor::new().process(&mut tokens);
         
         Ok(tokens)
     }
@@ -882,10 +894,28 @@ impl Tokenizer {
         
         Ok(())
     }
+}
+
+struct PostProcessor {
+    remove: HashSet<usize>,
+}
+
+impl PostProcessor {
+    fn new() -> Self {
+        Self {
+            remove: HashSet::default(),
+        }
+    }
     
-    fn clean_tokens(&self, tokens: &mut Vec<Token>) {
+    fn process(mut self, tokens: &mut Vec<Token>) {
+        self.clean_groups(tokens);
+        self.reorder_number_ranges(tokens);
+        self.clean_numbersets(tokens);
+        self.purge(tokens);
+    }
+    
+    fn clean_groups(&mut self, tokens: &[Token]) {
         let mut stack = Vec::new();
-        let mut remove = Vec::new();
         
         for (i, token) in tokens.iter().enumerate() {
             match token {
@@ -895,13 +925,85 @@ impl Tokenizer {
                     let last = stack.pop().unwrap();
                     
                     if !last.1 {
-                        remove.push(last.0);
-                        remove.push(i);
+                        self.remove.insert(last.0);
+                        self.remove.insert(i);
                     }
                 },
                 _ => {},
             }
         }
+    }
+    
+    fn reorder_number_ranges(&mut self, tokens: &mut Vec<Token>) {
+        let mut latest_typ = NumberType::U8;
+        
+        for token in tokens {
+            match token {
+                Token::StartNumberset(typ) => latest_typ = typ.clone(),
+                Token::NumberRange(start, end) => {
+                    if !latest_typ.is_signed() {
+                        if start > end {
+                            std::mem::swap(&mut *start, &mut *end);
+                        }
+                    } else {
+                        macro_rules! typed_swap {
+                            ($s:ty, $u:ty) => {{
+                                let a = *start as $s;
+                                let b = *end as $s;
+                                *start = std::cmp::min(a, b) as $u as u64;
+                                *end = std::cmp::max(a, b) as $u as u64;
+                            }}
+                        }
+                        
+                        match &latest_typ {
+                            NumberType::I8 => typed_swap!(i8, u8),
+                            NumberType::I16 => typed_swap!(i16, u16),
+                            NumberType::I32 => typed_swap!(i32, u32),
+                            NumberType::I64 => typed_swap!(i64, u64),
+                            _ => unreachable!(),
+                        }
+                    }
+                },
+                _ => {},
+            }
+        }
+    }
+    
+    fn clean_numbersets(&mut self, tokens: &[Token]) {
+        let mut start = 0;
+        
+        while let Some(token) = tokens.get(start) {
+            if let Token::StartNumberset(_) = token {
+                let mut end = start + 1;
+                
+                while !matches!(&tokens[end], Token::EndNumberset) {
+                    end += 1;
+                }
+                
+                self.deduplicate_numberset(start + 1, &tokens[start + 1..end]);
+                start = end;
+            }
+            
+            start += 1;
+        }
+    }
+    
+    fn deduplicate_numberset(&mut self, base: usize, set: &[Token]) {
+        assert!(!set.is_empty());
+        let mut seen: HashSet<(u64, u64)> = HashSet::default();
+        
+        for (i, token) in set.iter().enumerate() {
+            let Token::NumberRange(start, end) = token else { unreachable!() };
+            let elem = (*start, *end);
+            
+            if !seen.insert(elem) {
+                self.remove.insert(base + i);
+            }
+        }
+    }
+    
+    fn purge(self, tokens: &mut Vec<Token>) {
+        let mut remove: Vec<usize> = self.remove.into_iter().collect();
         
         remove.sort_by(|a, b| b.cmp(a));
         
