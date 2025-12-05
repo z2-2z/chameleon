@@ -135,17 +135,22 @@ impl<'a> Parser<'a> {
         self.cursor >= self.view.len()
     }
     
-    fn skip_fn<F>(&mut self, mut f: F)
+    fn skip_fn<F>(&mut self, mut f: F) -> bool
     where
         F: FnMut(char) -> bool,
     {
+        let mut skipped = false;
+        
         loop {
             if let Some(c) = self.view.char_at(self.cursor) && f(c) {
                 self.cursor += 1;
+                skipped = true;
             } else {
                 break;
             }
         }
+        
+        skipped
     }
     
     fn skip_str(&mut self, s: &str) {
@@ -233,6 +238,9 @@ pub enum ParsingErrorKind {
     
     #[error("Invalid namespace: {0}")]
     InvalidNamespace(&'static str),
+    
+    #[error("Invalid clear statement: {0}")]
+    InvalidClear(&'static str),
 }
 
 #[derive(Debug, Error)]
@@ -324,6 +332,13 @@ impl ParsingError {
         Self {
             meta: parser.metadata(start),
             kind: ParsingErrorKind::InvalidNamespace(description),
+        }
+    }
+    
+    fn invalid_clear(parser: &mut Parser, start: usize, description: &'static str) -> Self {
+        Self {
+            meta: parser.metadata(start),
+            kind: ParsingErrorKind::InvalidClear(description),
         }
     }
 }
@@ -466,6 +481,8 @@ impl Tokenizer {
                 self.parse_rule_definition(parser, tokens)?;
             } else if parser.has(syntax::DIRECTIVE_NAMESPACE) {
                 self.parse_namespace(parser)?;
+            } else if parser.has(syntax::DIRECTIVE_CLEAR) {
+                self.parse_clear(parser)?;
             } else {
                 return Err(ParsingError::missing_rule(parser));
             }
@@ -799,7 +816,9 @@ impl Tokenizer {
         
         parser.skip_str(syntax::DIRECTIVE_NAMESPACE);
         
-        parser.skip_fn(syntax::is_whitespace);
+        if !parser.skip_fn(syntax::is_whitespace) {
+            return Err(ParsingError::invalid_namespace(parser, start_namespace, "Missing whitespace"));
+        }
         
         let Some(name) = parser.collect(syntax::is_nonterminal) else {
             return Err(ParsingError::invalid_namespace(parser, start_namespace, "Invalid namespace definition"));
@@ -811,6 +830,30 @@ impl Tokenizer {
         
         if !parser.expect(syntax::END_RULE) {
             return Err(ParsingError::invalid_namespace(parser, start_namespace, "Invalid name for namespace"));
+        }
+        
+        Ok(())
+    }
+    
+    fn parse_clear(&mut self, parser: &mut Parser) -> Result<(), ParsingError> {
+        let start_clear = parser.cursor();
+        
+        parser.skip_str(syntax::DIRECTIVE_CLEAR);
+        
+        if !parser.skip_fn(syntax::is_whitespace) {
+            return Err(ParsingError::invalid_clear(parser, start_clear, "Missing whitespace"));
+        }
+        
+        if parser.expect(syntax::DIRECTIVE_NAMESPACE) {
+            self.namespace = None;
+        } else {
+            return Err(ParsingError::invalid_clear(parser, start_clear, "Invalid argument"));
+        }
+        
+        parser.skip_fn(syntax::is_whitespace);
+        
+        if !parser.expect(syntax::END_RULE) {
+            return Err(ParsingError::invalid_clear(parser, start_clear, "Invalid arguments"));
         }
         
         Ok(())

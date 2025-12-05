@@ -5,8 +5,9 @@ namespace STD
     <Y> 
 ) ((<Z>)))
 
-<STRINGS> => "" "東" "\xff"
+clear namespace
 
+<STRINGS> => "" "東" "\xff"
 <NUMBERS> => (
     i8 {
         -128..127,
@@ -19,4 +20,5 @@ namespace STD
 )
 
 namespace SECOND
-<YEET> => (<STD::NUMBERS> || "")
+
+<YEET> => (<NUMBERS> || "")

@@ -40,3 +40,4 @@ pub const OPERATOR_RANGE: &str = "..";
 pub const OPERATOR_SET_SEPARATOR: &str = ",";
 pub const DIRECTIVE_NAMESPACE: &str = "namespace";
 pub const OPERATOR_NAMESPACE_SEPARATOR: &str = "::";
+pub const DIRECTIVE_CLEAR: &str = "clear";

@@ -1,7 +1,11 @@
 use clap::Parser;
 use anyhow::Result;
+use mimalloc::MiMalloc;
 
 mod grammar;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 #[derive(clap::Parser)]
 #[command(version, about, long_about = None)]
