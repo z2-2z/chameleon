@@ -5,7 +5,7 @@ namespace STD
     <Y> 
 ) ((<Z>)))
 
-clear namespace
+no namespace
 
 <STRINGS> => "" "東" "\xff"
 <NUMBERS> => (
