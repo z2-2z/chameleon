@@ -7,7 +7,7 @@ namespace STD
 
 no namespace
 
-<STRINGS> => "" "東" "\xgf"
+<STRINGS> => "" "東" "\xff"
 <NUMBERS> => (
     i8 {
         -128..127,
