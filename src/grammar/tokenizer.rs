@@ -3,205 +3,6 @@ use thiserror::Error;
 use std::collections::HashSet;
 use crate::grammar::syntax;
 
-#[derive(Debug, Clone)]
-pub struct TextMetadata {
-    pub line: usize,
-    pub column: usize,
-}
-
-struct StringView<'a> {
-    bytes: &'a [u8],
-    indices: Vec<usize>,
-    last_line: usize,
-    last_column: usize,
-    last_index: usize,
-}
-
-impl<'a> StringView<'a> {
-    fn new(string: &'a str) -> Self {
-        let mut indices: Vec<usize> = string.char_indices().map(|(i, _)| i).collect();
-        indices.push(string.len());
-        
-        Self {
-            bytes: string.as_bytes(),
-            indices,
-            last_line: 1,
-            last_column: 0,
-            last_index: 0,
-        }
-    }
-    
-    #[inline]
-    fn len(&self) -> usize {
-        self.indices.len() - 1
-    }
-    
-    fn char_at(&self, index: usize) -> Option<char> {
-        if index >= self.len() {
-            return None;
-        }
-        
-        let start = self.indices[index];
-        let end = self.indices[index + 1];
-        
-        let s = str::from_utf8(&self.bytes[start..end]).ok()?;
-        s.chars().next()
-    }
-    
-    fn str_at(&self, range: Range<usize>) -> Option<&'a str> {
-        if range.start >= self.len() || range.end > self.len() {
-            return None;
-        }
-        
-        let start = self.indices[range.start];
-        let end = self.indices[range.end];
-        
-        str::from_utf8(&self.bytes[start..end]).ok()
-    }
-    
-    fn bytes_at(&self, index: usize, raw_len: usize) -> Option<&'a [u8]> {
-        if index >= self.len() {
-            return None;
-        }
-        
-        let start = self.indices[index];
-        self.bytes.get(start..start + raw_len)
-    }
-    
-    fn converted_len(s: &str) -> usize {
-        s.chars().count()
-    }
-    
-    fn get_metadata(&mut self, index: usize) -> TextMetadata {
-        assert!(index >= self.last_index.saturating_sub(1));
-        
-        while self.last_index <= index {
-            if self.bytes.get(self.indices[self.last_index]) == Some(&b'\n') {
-                self.last_line += 1;
-                self.last_column = 0;
-            } else {
-                self.last_column += 1;
-            }
-            
-            self.last_index += 1;
-        }
-        
-        TextMetadata {
-            line: self.last_line,
-            column: self.last_column,
-        }
-    }
-}
-
-#[cfg(test)]
-mod string_view_tests {
-    use super::*;
-    
-    #[test]
-    fn test1() {
-        let s = "東y̆"; // 3 + 1 + 2
-        let view = StringView::new(s);
-        
-        println!("{} -> {}", s.len(), view.len());
-        
-        for i in 0..view.len() {
-            println!("{}: {:?}", i, view.char_at(i));
-        }
-        
-        println!("{:?}", view.str_at(0..2));
-        println!("{:?}", view.str_at(2..3));
-        
-        assert_eq!(view.str_at(1..1), Some(""));
-    }
-}
-
-struct Parser<'a> {
-    view: StringView<'a>,
-    cursor: usize,
-}
-
-impl<'a> Parser<'a> {
-    fn new(data: &'a str) -> Self {
-        Self {
-            view: StringView::new(data),
-            cursor: 0,
-        }
-    }
-    
-    fn cursor(&self) -> usize {
-        self.cursor
-    }
-    
-    fn eof(&self) -> bool {
-        self.cursor >= self.view.len()
-    }
-    
-    fn skip_fn<F>(&mut self, mut f: F) -> bool
-    where
-        F: FnMut(char) -> bool,
-    {
-        let mut skipped = false;
-        
-        loop {
-            if let Some(c) = self.view.char_at(self.cursor) && f(c) {
-                self.cursor += 1;
-                skipped = true;
-            } else {
-                break;
-            }
-        }
-        
-        skipped
-    }
-    
-    fn skip_str(&mut self, s: &str) {
-        debug_assert!(self.has(s));
-        self.cursor += StringView::converted_len(s);
-    }
-    
-    fn skip_char(&mut self) {
-        self.cursor += 1;
-    }
-    
-    fn has(&self, s: &str) -> bool {
-        self.view.bytes_at(self.cursor, s.len()) == Some(s.as_bytes())
-    }
-    
-    fn current_char(&self) -> Option<char> {
-        self.view.char_at(self.cursor)
-    }
-    
-    fn collect<F>(&mut self, mut f: F) -> Option<&'a str>
-    where
-        F: FnMut(char) -> bool,
-    {
-        let start = self.cursor;
-        
-        loop {
-            if let Some(c) = self.view.char_at(self.cursor) && f(c) {
-                self.cursor += 1;
-            } else {
-                break;
-            }
-        }
-        
-        self.view.str_at(start..self.cursor)
-    }
-    
-    fn expect(&mut self, s: &str) -> bool {
-        if self.has(s) {
-            self.skip_str(s);
-            true
-        } else {
-            false
-        }
-    }
-    
-    fn metadata(&mut self, offset: usize) -> TextMetadata {
-        self.view.get_metadata(offset)
-    }
-}
-
 #[derive(Debug, Error)]
 pub enum ParsingErrorKind {
     #[error("Comment was never closed")]
@@ -345,6 +146,183 @@ impl ParsingError {
 }
 
 #[derive(Debug, Clone)]
+pub struct TextMetadata {
+    pub line: usize,
+    pub column: usize,
+}
+
+struct StringView<'a> {
+    bytes: &'a [u8],
+    indices: Vec<usize>,
+    last_line: usize,
+    last_column: usize,
+    last_index: usize,
+}
+
+impl<'a> StringView<'a> {
+    fn new(string: &'a str) -> Self {
+        let mut indices: Vec<usize> = string.char_indices().map(|(i, _)| i).collect();
+        indices.push(string.len());
+        
+        Self {
+            bytes: string.as_bytes(),
+            indices,
+            last_line: 1,
+            last_column: 0,
+            last_index: 0,
+        }
+    }
+    
+    #[inline]
+    fn len(&self) -> usize {
+        self.indices.len() - 1
+    }
+    
+    fn char_at(&self, index: usize) -> Option<char> {
+        if index >= self.len() {
+            return None;
+        }
+        
+        let start = self.indices[index];
+        let end = self.indices[index + 1];
+        
+        let s = str::from_utf8(&self.bytes[start..end]).ok()?;
+        s.chars().next()
+    }
+    
+    fn str_at(&self, range: Range<usize>) -> Option<&'a str> {
+        if range.start >= self.len() || range.end > self.len() {
+            return None;
+        }
+        
+        let start = self.indices[range.start];
+        let end = self.indices[range.end];
+        
+        str::from_utf8(&self.bytes[start..end]).ok()
+    }
+    
+    fn bytes_at(&self, index: usize, raw_len: usize) -> Option<&'a [u8]> {
+        if index >= self.len() {
+            return None;
+        }
+        
+        let start = self.indices[index];
+        self.bytes.get(start..start + raw_len)
+    }
+    
+    fn converted_len(s: &str) -> usize {
+        s.chars().count()
+    }
+    
+    fn get_metadata(&mut self, index: usize) -> TextMetadata {
+        assert!(index >= self.last_index.saturating_sub(1));
+        
+        while self.last_index <= index {
+            if self.bytes.get(self.indices[self.last_index]) == Some(&b'\n') {
+                self.last_line += 1;
+                self.last_column = 0;
+            } else {
+                self.last_column += 1;
+            }
+            
+            self.last_index += 1;
+        }
+        
+        TextMetadata {
+            line: self.last_line,
+            column: self.last_column,
+        }
+    }
+}
+
+struct Parser<'a> {
+    view: StringView<'a>,
+    cursor: usize,
+}
+
+impl<'a> Parser<'a> {
+    fn new(data: &'a str) -> Self {
+        Self {
+            view: StringView::new(data),
+            cursor: 0,
+        }
+    }
+    
+    fn cursor(&self) -> usize {
+        self.cursor
+    }
+    
+    fn eof(&self) -> bool {
+        self.cursor >= self.view.len()
+    }
+    
+    fn skip_fn<F>(&mut self, mut f: F) -> bool
+    where
+        F: FnMut(char) -> bool,
+    {
+        let mut skipped = false;
+        
+        loop {
+            if let Some(c) = self.view.char_at(self.cursor) && f(c) {
+                self.cursor += 1;
+                skipped = true;
+            } else {
+                break;
+            }
+        }
+        
+        skipped
+    }
+    
+    fn skip_str(&mut self, s: &str) {
+        debug_assert!(self.has(s));
+        self.cursor += StringView::converted_len(s);
+    }
+    
+    fn skip_char(&mut self) {
+        self.cursor += 1;
+    }
+    
+    fn has(&self, s: &str) -> bool {
+        self.view.bytes_at(self.cursor, s.len()) == Some(s.as_bytes())
+    }
+    
+    fn current_char(&self) -> Option<char> {
+        self.view.char_at(self.cursor)
+    }
+    
+    fn collect<F>(&mut self, mut f: F) -> Option<&'a str>
+    where
+        F: FnMut(char) -> bool,
+    {
+        let start = self.cursor;
+        
+        loop {
+            if let Some(c) = self.view.char_at(self.cursor) && f(c) {
+                self.cursor += 1;
+            } else {
+                break;
+            }
+        }
+        
+        self.view.str_at(start..self.cursor)
+    }
+    
+    fn expect(&mut self, s: &str) -> bool {
+        if self.has(s) {
+            self.skip_str(s);
+            true
+        } else {
+            false
+        }
+    }
+    
+    fn metadata(&mut self, offset: usize) -> TextMetadata {
+        self.view.get_metadata(offset)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum NumberType {
     U8,
     I8,
@@ -357,16 +335,6 @@ pub enum NumberType {
 }
 
 impl NumberType {
-    pub fn is_signed(&self) -> bool {
-        match self {
-            NumberType::I8 |
-            NumberType::I16 |
-            NumberType::I32 |
-            NumberType::I64 => true,
-            _ => false,
-        }
-    }
-    
     fn parse_decimal(&self, s: &str) -> Option<u64> {
         if s.is_empty() {
             return None;
@@ -477,7 +445,7 @@ impl Tokenizer {
         
         self.parse_top_level(&mut parser, &mut tokens)?;
         
-        PostProcessor::new().process(&mut tokens);
+        TokenPostProcessor::new().process(&mut tokens);
         
         Ok(tokens)
     }
@@ -896,11 +864,11 @@ impl Tokenizer {
     }
 }
 
-struct PostProcessor {
+struct TokenPostProcessor {
     remove: HashSet<usize>,
 }
 
-impl PostProcessor {
+impl TokenPostProcessor {
     fn new() -> Self {
         Self {
             remove: HashSet::default(),
@@ -1006,5 +974,27 @@ impl PostProcessor {
         for idx in remove {
             tokens.remove(idx);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test1() {
+        let s = "東y̆"; // 3 + 1 + 2
+        let view = StringView::new(s);
+        
+        println!("{} -> {}", s.len(), view.len());
+        
+        for i in 0..view.len() {
+            println!("{}: {:?}", i, view.char_at(i));
+        }
+        
+        println!("{:?}", view.str_at(0..2));
+        println!("{:?}", view.str_at(2..3));
+        
+        assert_eq!(view.str_at(1..1), Some(""));
     }
 }
