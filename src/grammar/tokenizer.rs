@@ -465,6 +465,7 @@ impl Tokenizer {
         let mut tokens = Vec::new();
         
         self.parse_top_level(&mut parser, &mut tokens)?;
+        self.clean_tokens(&mut tokens);
         
         Ok(tokens)
     }
@@ -880,5 +881,32 @@ impl Tokenizer {
         }
         
         Ok(())
+    }
+    
+    fn clean_tokens(&self, tokens: &mut Vec<Token>) {
+        let mut stack = Vec::new();
+        let mut remove = Vec::new();
+        
+        for (i, token) in tokens.iter().enumerate() {
+            match token {
+                Token::StartGroup => stack.push((i, false)),
+                Token::Or => stack.last_mut().unwrap().1 = true,
+                Token::EndGroup => {
+                    let last = stack.pop().unwrap();
+                    
+                    if !last.1 {
+                        remove.push(last.0);
+                        remove.push(i);
+                    }
+                },
+                _ => {},
+            }
+        }
+        
+        remove.sort_by(|a, b| b.cmp(a));
+        
+        for idx in remove {
+            tokens.remove(idx);
+        }
     }
 }

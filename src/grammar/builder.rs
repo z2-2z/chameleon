@@ -56,6 +56,8 @@ impl GrammarBuilder {
     pub fn build(self) -> Result<ContextFreeGrammar> {
         self.check()?;
         
+        println!("{:#?}", self.tokens);
+        
         todo!()
     }
     
