@@ -941,27 +941,23 @@ impl PostProcessor {
             match token {
                 Token::StartNumberset(typ) => latest_typ = typ.clone(),
                 Token::NumberRange(start, end) => {
-                    if !latest_typ.is_signed() {
-                        if start > end {
+                    macro_rules! typed_swap {
+                        ($s:ty, $u:ty) => {{
+                            let a = *start as $s;
+                            let b = *end as $s;
+                            *start = std::cmp::min(a, b) as $u as u64;
+                            *end = std::cmp::max(a, b) as $u as u64;
+                        }}
+                    }
+                    
+                    match &latest_typ {
+                        NumberType::I8 => typed_swap!(i8, u8),
+                        NumberType::I16 => typed_swap!(i16, u16),
+                        NumberType::I32 => typed_swap!(i32, u32),
+                        NumberType::I64 => typed_swap!(i64, u64),
+                        _ => if start > end {
                             std::mem::swap(&mut *start, &mut *end);
-                        }
-                    } else {
-                        macro_rules! typed_swap {
-                            ($s:ty, $u:ty) => {{
-                                let a = *start as $s;
-                                let b = *end as $s;
-                                *start = std::cmp::min(a, b) as $u as u64;
-                                *end = std::cmp::max(a, b) as $u as u64;
-                            }}
-                        }
-                        
-                        match &latest_typ {
-                            NumberType::I8 => typed_swap!(i8, u8),
-                            NumberType::I16 => typed_swap!(i16, u16),
-                            NumberType::I32 => typed_swap!(i32, u32),
-                            NumberType::I64 => typed_swap!(i64, u64),
-                            _ => unreachable!(),
-                        }
+                        },
                     }
                 },
                 _ => {},
