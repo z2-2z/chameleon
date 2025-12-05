@@ -387,7 +387,7 @@ impl NumberType {
 }
 
 #[derive(Debug)]
-pub enum Token<'a> {
+pub enum Token {
     StartRule(String),
     EndRule,
     NonTerminal(TextMetadata, String),
@@ -398,10 +398,9 @@ pub enum Token<'a> {
     StartNumberset(NumberType),
     EndNumberset,
     NumberRange(u64, u64),
-    SetNamespace(&'a str),
 }
 
-impl<'a> Token<'a> {
+impl Token {
     fn has_content(&self) -> bool {
         match self {
             Token::StartRule(_) => false,
@@ -414,7 +413,6 @@ impl<'a> Token<'a> {
             Token::StartNumberset(_) => false,
             Token::EndNumberset => true,
             Token::NumberRange(_, _) => true,
-            Token::SetNamespace(_) => false,
         }
     }
     
@@ -430,7 +428,6 @@ impl<'a> Token<'a> {
             Token::StartNumberset(_) => true,
             Token::EndNumberset => false,
             Token::NumberRange(_, _) => false,
-            Token::SetNamespace(_) => false,
         }
     }
 }
@@ -448,7 +445,7 @@ impl Tokenizer {
         }
     }
     
-    pub fn tokenize<'a>(&mut self, content: &'a str) -> Result<Vec<Token<'a>>, ParsingError> {
+    pub fn tokenize(&mut self, content: &str) -> Result<Vec<Token>, ParsingError> {
         let mut parser = Parser::new(content);
         let mut tokens = Vec::new();
         
@@ -457,7 +454,7 @@ impl Tokenizer {
         Ok(tokens)
     }
     
-    fn parse_top_level<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+    fn parse_top_level(&mut self, parser: &mut Parser, tokens: &mut Vec<Token>) -> Result<(), ParsingError> {
         loop {
             parser.skip_fn(syntax::is_whitespace_nl);
             
@@ -468,7 +465,7 @@ impl Tokenizer {
             } else if parser.has(syntax::START_NONTERMINAL) {
                 self.parse_rule_definition(parser, tokens)?;
             } else if parser.has(syntax::DIRECTIVE_NAMESPACE) {
-                self.parse_namespace(parser, tokens)?;
+                self.parse_namespace(parser)?;
             } else {
                 return Err(ParsingError::missing_rule(parser));
             }
@@ -512,7 +509,7 @@ impl Tokenizer {
         Ok(())
     }
     
-    fn parse_rule_definition<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+    fn parse_rule_definition(&mut self, parser: &mut Parser, tokens: &mut Vec<Token>) -> Result<(), ParsingError> {
         /* Left-hand side: a non-terminal */
         let nonterm = self.parse_nonterminal(parser)?;
         
@@ -574,7 +571,7 @@ impl Tokenizer {
         Ok(nonterm)
     }
     
-    fn parse_one_element<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+    fn parse_one_element(&mut self, parser: &mut Parser, tokens: &mut Vec<Token>) -> Result<(), ParsingError> {
         if parser.has(syntax::START_NONTERMINAL) {
             let metadata = parser.metadata(parser.cursor());
             let nonterm = self.parse_nonterminal(parser)?;
@@ -666,7 +663,7 @@ impl Tokenizer {
         Some((first * 16 + second) as u8)
     }
     
-    fn parse_group<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+    fn parse_group(&mut self, parser: &mut Parser, tokens: &mut Vec<Token>) -> Result<(), ParsingError> {
         let mut num_elements = 0;
         let start_group = parser.cursor();
         
@@ -697,7 +694,7 @@ impl Tokenizer {
         Ok(())
     }
     
-    fn parse_or<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+    fn parse_or(&mut self, parser: &mut Parser, tokens: &mut Vec<Token>) -> Result<(), ParsingError> {
         if self.group_level == 0 {
             return Err(ParsingError::or_error(parser, "For clarity, the OR operator is only allowed inside a group"));
         } else if !tokens.last().unwrap().has_content() {
@@ -710,7 +707,7 @@ impl Tokenizer {
         Ok(())
     }
     
-    fn parse_numberset<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+    fn parse_numberset(&mut self, parser: &mut Parser, tokens: &mut Vec<Token>) -> Result<(), ParsingError> {
         let mut num_elements = 0;
         
         let typ = if parser.expect(syntax::TYPE_U8) {
@@ -797,7 +794,7 @@ impl Tokenizer {
         }
     }
     
-    fn parse_namespace<'a>(&mut self, parser: &mut Parser<'a>, tokens: &mut Vec<Token<'a>>) -> Result<(), ParsingError> {
+    fn parse_namespace(&mut self, parser: &mut Parser) -> Result<(), ParsingError> {
         let start_namespace = parser.cursor();
         
         parser.skip_str(syntax::DIRECTIVE_NAMESPACE);
@@ -809,7 +806,6 @@ impl Tokenizer {
         };
         
         self.namespace = Some(name.to_owned());
-        tokens.push(Token::SetNamespace(name));
         
         parser.skip_fn(syntax::is_whitespace);
         
