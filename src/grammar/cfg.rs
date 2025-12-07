@@ -2,7 +2,7 @@ use std::ops::RangeInclusive;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, RandomState, BuildHasher};
 use petgraph::{graph::DiGraph, visit::Bfs};
-use nohash::IntSet as NoHashSet;
+use nohash::{IntSet as NoHashSet, IntMap as NoHashMap};
 use crate::grammar::builder::GrammarBuilder;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
@@ -156,6 +156,41 @@ impl ContextFreeGrammar {
             }
             
             break;
+        }
+    }
+    
+    pub(super) fn prepare_gnf(&mut self) {
+        let mut nonterms: NoHashMap<u64, NonTerminal> = NoHashMap::default();
+        let hasher = RandomState::new();
+        let old_len = self.rules.len();
+        
+        for i in 0..old_len {
+            let rule = &self.rules[i];
+            
+            if rule.rhs.len() == 1 {
+                continue;
+            }
+            
+            for j in 1..rule.rhs.len() {
+                if let Symbol::Terminal(term) = &self.rules[i].rhs[j] {
+                    let term = term.clone();
+                    let key = hasher.hash_one(&term);
+                    
+                    if let Some(nonterm) = nonterms.get(&key) {
+                        self.rules[i].rhs[j] = Symbol::NonTerminal(nonterm.clone());
+                    } else {
+                        let nonterm = NonTerminal(format!("(terminal:{key})"));
+                        nonterms.insert(key, nonterm.clone());
+                        self.rules[i].rhs[j] = Symbol::NonTerminal(nonterm.clone());
+                        self.rules.push(ProductionRule {
+                            lhs: nonterm,
+                            rhs: vec![
+                                Symbol::Terminal(term),
+                            ],
+                        });
+                    }
+                }
+            }
         }
     }
 }

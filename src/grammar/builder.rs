@@ -99,6 +99,8 @@ impl GrammarBuilder {
         println!("{}", cfg.rules().len());
         cfg.expand_unit_rules();
         println!("{}", cfg.rules().len());
+        cfg.prepare_gnf();
+        println!("{}", cfg.rules().len());
         //TODO: convert to GNF
         //TODO: set new entrypoint if necessary
         
