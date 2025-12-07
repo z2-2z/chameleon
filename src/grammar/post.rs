@@ -30,6 +30,9 @@ impl TokenPostProcessor {
         
         /* Then, it is safe to do terminal optimizations */
         self.concat_strings(tokens);
+        
+        #[cfg(debug_assertions)]
+        self.verify(tokens);
     }
     
     fn clean_groups(&mut self, tokens: &[Token]) {
@@ -225,6 +228,22 @@ impl TokenPostProcessor {
             }
             
             i += 1;
+        }
+    }
+    
+    #[cfg(debug_assertions)]
+    fn verify(&mut self, tokens: &[Token]) {
+        let mut count = 0;
+        
+        for token in tokens {
+            match token {
+                Token::StartRule(_) => count = 0,
+                Token::EndRule => assert!(count > 0),
+                Token::StartGroup |
+                Token::EndGroup |
+                Token::Or => unreachable!(),
+                _ => count += 1,
+            }
         }
     }
 }

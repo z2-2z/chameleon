@@ -46,7 +46,8 @@ fn translate(grammars: Vec<String>) -> Result<()> {
         builder.load_grammar(&grammar)?;
     }
     
-    let _cfg = builder.build()?;
+    let cfg = builder.build()?;
+    println!("{:#?}", cfg);
     
     Ok(())
 }
