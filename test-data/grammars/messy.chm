@@ -1,6 +1,6 @@
 namespace STD
 
-<X> => (<OTHER::A> || "a" || "b")
+<X> => (<OTHER::A> ("z" || "a") || "b")
 <Y> => ((
     <Y> 
 ) ((<Z>)))

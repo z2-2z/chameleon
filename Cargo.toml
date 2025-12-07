@@ -3,6 +3,11 @@ name = "chameleon"
 version = "2.0.0"
 edition = "2024"
 
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
 [dependencies]
 anyhow = "1.0"
 thiserror = "2.0"

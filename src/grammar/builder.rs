@@ -2,6 +2,7 @@ use crate::grammar::{
     cfg::ContextFreeGrammar,
     tokenizer::{Tokenizer, Token, TextMetadata, ParsingError},
     syntax,
+    post::TokenPostProcessor,
 };
 use anyhow::Result;
 use thiserror::Error;
@@ -53,8 +54,14 @@ impl GrammarBuilder {
         Ok(())
     }
     
-    pub fn build(self) -> Result<ContextFreeGrammar> {
-        self.check()?;
+    pub fn build(mut self) -> Result<ContextFreeGrammar> {
+        //self.check()?;
+        
+        for tokens in self.tokens.values_mut() {
+            TokenPostProcessor::new().process(tokens);
+        }
+        
+        println!("{:#?}", self.tokens);
         
         todo!()
     }
