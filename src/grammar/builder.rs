@@ -89,13 +89,11 @@ impl GrammarBuilder {
         }
         
         /* Convert grammar into GNF */
-        let mut cfg = ContextFreeGrammar {
+        let mut cfg = ContextFreeGrammar::new(
+            NonTerminal(self.entrypoint),
             rules,
-            entrypoint: NonTerminal(self.entrypoint),
-        };
-        
-        //TODO: write correct grammar
-        //TODO: remove unused/duplicate rules
+        );
+        cfg.remove_unused_rules();
         //TODO: convert to GNF
         //TODO: set new entrypoint if necessary
         
