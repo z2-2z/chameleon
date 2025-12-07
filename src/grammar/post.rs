@@ -24,6 +24,9 @@ impl TokenPostProcessor {
         /* Then, desugar grammar */
         self.remove_groups(tokens);
         self.split_ors(tokens);
+        
+        /* Then, it is safe to do terminal optimizations */
+        self.concat_strings(tokens);
     }
     
     fn clean_groups(&mut self, tokens: &[Token]) {
@@ -195,5 +198,30 @@ impl TokenPostProcessor {
         }
         
         tokens.extend(extra_tokens);
+    }
+    
+    fn concat_strings(&mut self, tokens: &mut Vec<Token>) {
+        let mut last_string = None;
+        let mut i = 0;
+        
+        while i < tokens.len() {
+            match &tokens[i] {
+                Token::StartRule(_) => last_string = None,
+                Token::String(_) => {
+                    if let Some(last) = last_string && last == i - 1 {
+                        let Token::String(this) = tokens.remove(i) else { unreachable!() };
+                        i -= 1;
+                        
+                        let Token::String(s) = &mut tokens[last] else { unreachable!() };
+                        s.extend(this);
+                    }
+                    
+                    last_string = Some(i);
+                },
+                _ => {},
+            }
+            
+            i += 1;
+        }
     }
 }

@@ -17,6 +17,7 @@
 - include all ascii escape characters in string + \xXX hex escape + \0 + \uXXXX
 - entrypoint nonterm is ENTRYPOINT
 - TODO: extra numerical types f32/f64 ?
+- TODO: endianness ?
 
 Capabilities:
 1. Parse text/binary data into internal representation
