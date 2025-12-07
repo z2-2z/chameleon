@@ -1,0 +1,62 @@
+/*
+    https://www.json.org/json-en.html
+*/
+
+<ENTRYPOINT> => <json::VALUE>
+
+namespace json
+
+<VALUE> => <WS> (<STRING> || <NUMBER> || <OBJECT> || <ARRAY> || "true" || "false" || "null") <WS>
+
+<OBJECT> => (
+    "{" <WS> "}" ||
+    "{" <OBJECT-SEQUENCE>
+)
+<OBJECT-SEQUENCE> => <WS> <STRING> <WS> ":" <VALUE> <OBJECT-END>
+<OBJECT-END> => ("}" || "," <OBJECT-SEQUENCE>)
+
+<ARRAY> => (
+    "[" <WS> "]" ||
+    "[" <ARRAY-SEQUENCE>
+)
+<ARRAY-SEQUENCE> => <VALUE> <ARRAY-END>
+<ARRAY-END> => ("]" || "," <ARRAY-SEQUENCE>)
+
+<STRING> => "\"" <STRING-CONTENT>
+<STRING-CONTENT> => (
+    "\"" ||
+    u8 { 0..33, 35..91, 93..126 } <STRING-CONTENT> ||
+    <STRING-ESCAPE> <STRING-CONTENT>
+)
+<STRING-ESCAPE> => "\\" (
+    "\"" ||
+    "\\" ||
+    "/" ||
+    "b" ||
+    "f" ||
+    "n" ||
+    "r" ||
+    "t" ||
+    "u" <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT>
+)
+<HEX-DIGIT> => u8 {
+    0x30..0x39, 0x41..0x46, 0x61..0x66
+}
+
+<WS> => (
+    "" ||
+    " " <WS> ||
+    "\n" <WS> ||
+    "\r" <WS> ||
+    "\t" <WS>
+)
+
+<NUMBER> => <SIGN> <LEADING-DIGITS> <FRACTION> <EXPONENT>
+<SIGN> => ("" || "-")
+<LEADING-DIGITS> => ("0" || <NON-ZERO-DIGIT> <MORE-DIGITS>)
+<NON-ZERO-DIGIT> => u8 { 0x31..0x39 }
+<DIGIT> => u8 { 0x30..0x39 }
+<DIGITS> => <DIGIT> <MORE-DIGITS>
+<MORE-DIGITS> => ("" || <DIGITS>)
+<FRACTION> => ("" || "." <DIGITS>)
+<EXPONENT> => ("" || ("e" || "E") ("" || "+" || "-") <DIGITS>)
