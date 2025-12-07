@@ -426,14 +426,12 @@ impl Token {
 }
 
 pub struct Tokenizer {
-    group_level: usize,
     namespace: Option<String>,
 }
 
 impl Tokenizer {
     pub fn new() -> Self {
         Self {
-            group_level: 0,
             namespace: None,
         }
     }
@@ -686,7 +684,6 @@ impl Tokenizer {
         let start_group = parser.cursor();
         
         parser.skip_str(syntax::START_GROUP);
-        self.group_level += 1;
         tokens.push(Token::StartGroup);
         
         loop {
@@ -707,15 +704,12 @@ impl Tokenizer {
         }
         
         tokens.push(Token::EndGroup);
-        self.group_level -= 1;
         
         Ok(())
     }
     
     fn parse_or(&mut self, parser: &mut Parser, tokens: &mut Vec<Token>) -> Result<(), ParsingError> {
-        if self.group_level == 0 {
-            return Err(ParsingError::or_error(parser, "For clarity, the OR operator is only allowed inside a group"));
-        } else if !tokens.last().unwrap().has_content() {
+        if !tokens.last().unwrap().has_content() {
             return Err(ParsingError::or_error(parser, "OR is not separating elements with content"));
         }
         

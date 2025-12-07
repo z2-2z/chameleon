@@ -37,15 +37,19 @@ impl TokenPostProcessor {
     
     fn clean_groups(&mut self, tokens: &[Token]) {
         let mut stack = Vec::new();
+        let mut last_start_rule = 0;
         
         for (i, token) in tokens.iter().enumerate() {
             match token {
+                Token::StartRule(_) => last_start_rule = i,
                 Token::StartGroup => stack.push((i, false)),
-                Token::Or => stack.last_mut().unwrap().1 = true,
+                Token::Or => if let Some(last) = stack.last_mut() {
+                    last.1 = true;
+                },
                 Token::EndGroup => {
                     let last = stack.pop().unwrap();
                     
-                    if !last.1 {
+                    if !last.1 || (stack.is_empty() && last.0 == last_start_rule + 1) {
                         self.remove.insert(last.0);
                         self.remove.insert(i);
                     }
