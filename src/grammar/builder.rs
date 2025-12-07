@@ -57,8 +57,9 @@ impl GrammarBuilder {
     pub fn build(mut self) -> Result<ContextFreeGrammar> {
         //self.check()?;
         
+        let mut post = TokenPostProcessor::new();
         for tokens in self.tokens.values_mut() {
-            TokenPostProcessor::new().process(tokens);
+            post.process(tokens);
         }
         
         println!("{:#?}", self.tokens);

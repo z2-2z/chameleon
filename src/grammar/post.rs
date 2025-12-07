@@ -14,7 +14,10 @@ impl TokenPostProcessor {
         }
     }
     
-    pub fn process(mut self, tokens: &mut Vec<Token>) {
+    pub fn process(&mut self, tokens: &mut Vec<Token>) {
+        /* Reset state but keep cursor */
+        self.remove.clear();
+        
         /* First, clean the token stream */
         self.clean_groups(tokens);
         self.reorder_number_ranges(tokens);
