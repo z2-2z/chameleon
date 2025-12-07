@@ -1,9 +1,11 @@
 use std::ops::RangeInclusive;
 use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, RandomState, BuildHasher};
 use petgraph::{graph::DiGraph, visit::Bfs};
+use nohash::IntSet as NoHashSet;
 use crate::grammar::builder::GrammarBuilder;
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub struct NonTerminal(pub(super) String);
 
 impl NonTerminal {
@@ -12,7 +14,7 @@ impl NonTerminal {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub enum Numberset {
     I8(Vec<RangeInclusive<i8>>),
     U8(Vec<RangeInclusive<u8>>),
@@ -24,19 +26,19 @@ pub enum Numberset {
     U64(Vec<RangeInclusive<u64>>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub enum Terminal {
     Bytes(Vec<u8>),
     Numberset(Numberset),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub enum Symbol {
     Terminal(Terminal),
     NonTerminal(NonTerminal),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub struct ProductionRule {
     pub(super) lhs: NonTerminal,
     pub(super) rhs: Vec<Symbol>,
@@ -94,6 +96,20 @@ impl ContextFreeGrammar {
         
         while i < self.rules.len() {
             if self.unused_rules.contains(self.rules[i].lhs.id()) {
+                self.rules.remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
+    
+    pub(super) fn remove_duplicate_rules(&mut self) {
+        let mut rules = NoHashSet::default();
+        let hasher = RandomState::new();
+        let mut i = 0;
+        
+        while i < self.rules.len() {
+            if !rules.insert(hasher.hash_one(&self.rules[i])) {
                 self.rules.remove(i);
             } else {
                 i += 1;

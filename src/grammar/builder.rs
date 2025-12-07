@@ -94,6 +94,7 @@ impl GrammarBuilder {
             rules,
         );
         cfg.remove_unused_rules();
+        cfg.remove_duplicate_rules();
         //TODO: convert to GNF
         //TODO: set new entrypoint if necessary
         

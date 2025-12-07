@@ -65,7 +65,7 @@ fn translate(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
     }
     
     let cfg = builder.build()?;
-    println!("{:#?}", cfg);
+    //println!("{:#?}", cfg);
     
     Ok(())
 }

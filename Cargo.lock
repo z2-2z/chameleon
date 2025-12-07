@@ -75,6 +75,7 @@ dependencies = [
  "anyhow",
  "clap",
  "mimalloc",
+ "nohash",
  "petgraph",
  "thiserror",
 ]
@@ -210,6 +211,12 @@ checksum = "e1ee66a4b64c74f4ef288bcbb9192ad9c3feaad75193129ac8509af543894fd8"
 dependencies = [
  "libmimalloc-sys",
 ]
+
+[[package]]
+name = "nohash"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0f889fb66f7acdf83442c35775764b51fed3c606ab9cee51500dbde2cf528ca"
 
 [[package]]
 name = "once_cell_polyfill"
