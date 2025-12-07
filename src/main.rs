@@ -18,17 +18,31 @@ struct Args {
 enum Commands {
     /// Verifies that a grammar file is syntactically valid
     Check {
-        /// Path to grammar file
+        /// Sets the non-terminal entrypoint for the grammar
+        #[arg(long)]
+        entrypoint: Option<String>,
+        
+        /// Paths to grammar files
         grammars: Vec<String>,
     },
     
+    /// Take one or more grammars and emit mutation and generation code
     Translate {
+        /// Sets the non-terminal entrypoint for the grammar
+        #[arg(long)]
+        entrypoint: Option<String>,
+        
+        /// Paths to grammar files
         grammars: Vec<String>,
     },
 }
 
-fn check(grammars: Vec<String>) -> Result<()> {
+fn check(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
     let mut builder = grammar::ContextFreeGrammar::builder();
+    
+    if let Some(entrypoint) = entrypoint {
+        builder.set_entrypoint(entrypoint);
+    }
     
     for grammar in grammars {
         builder.load_grammar(&grammar)?;
@@ -39,8 +53,12 @@ fn check(grammars: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-fn translate(grammars: Vec<String>) -> Result<()> {
+fn translate(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
     let mut builder = grammar::ContextFreeGrammar::builder();
+    
+    if let Some(entrypoint) = entrypoint {
+        builder.set_entrypoint(entrypoint);
+    }
     
     for grammar in grammars {
         builder.load_grammar(&grammar)?;
@@ -56,7 +74,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
     
     match args.command {
-        Commands::Check { grammars } => check(grammars),
-        Commands::Translate { grammars } => translate(grammars),
+        Commands::Check { entrypoint, grammars } => check(entrypoint, grammars),
+        Commands::Translate { entrypoint, grammars } => translate(entrypoint, grammars),
     }
 }

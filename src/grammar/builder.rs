@@ -18,8 +18,10 @@ pub enum BuilderError {
         nonterminal: String,
     },
     
-    #[error("No entrypoint rule has been defined ('{}{}{}')", syntax::START_NONTERMINAL, syntax::ENTRYPOINT_RULE, syntax::END_NONTERMINAL)]
-    MissingEntrypoint,
+    #[error("No entrypoint rule has been defined ('{}{}{}')", syntax::START_NONTERMINAL, name, syntax::END_NONTERMINAL)]
+    MissingEntrypoint {
+        name: String,
+    },
     
     #[error("Invalid syntax in '{}': {}", file, error)]
     SyntaxError {
@@ -30,13 +32,19 @@ pub enum BuilderError {
 
 pub struct GrammarBuilder {
     tokens: HashMap<String, Vec<Token>>,
+    entrypoint: String,
 }
 
 impl GrammarBuilder {
     pub fn new() -> Self {
         Self {
             tokens: HashMap::default(),
+            entrypoint: syntax::ENTRYPOINT_RULE.to_owned(),
         }
+    }
+    
+    pub fn set_entrypoint(&mut self, entrypoint: String) {
+        self.entrypoint = entrypoint;
     }
     
     pub fn load_grammar(&mut self, path: &str) -> Result<()> {
@@ -56,7 +64,7 @@ impl GrammarBuilder {
     }
     
     pub fn build(mut self) -> Result<ContextFreeGrammar> {
-        //self.check()?;
+        self.check()?;
         
         let mut post = TokenPostProcessor::new();
         for tokens in self.tokens.values_mut() {
@@ -80,10 +88,18 @@ impl GrammarBuilder {
             }
         }
         
-        Ok(ContextFreeGrammar {
+        /* Convert grammar into GNF */
+        let mut cfg = ContextFreeGrammar {
             rules,
-            entrypoint: NonTerminal(syntax::ENTRYPOINT_RULE.to_owned()),
-        })
+            entrypoint: NonTerminal(self.entrypoint),
+        };
+        
+        //TODO: write correct grammar
+        //TODO: remove unused/duplicate rules
+        //TODO: convert to GNF
+        //TODO: set new entrypoint if necessary
+        
+        Ok(cfg)
     }
     
     fn convert_rule(&self, tokens: &[Token]) -> ProductionRule {
@@ -168,8 +184,10 @@ impl GrammarBuilder {
         }
         
         /* Check if there is an entrypoint */
-        if !rules.contains(syntax::ENTRYPOINT_RULE) {
-            return Err(BuilderError::MissingEntrypoint);
+        if !rules.contains(self.entrypoint.as_str()) {
+            return Err(BuilderError::MissingEntrypoint {
+                name: self.entrypoint.to_owned(),
+            });
         }
         
         Ok(())
