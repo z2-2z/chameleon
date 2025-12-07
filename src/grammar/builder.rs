@@ -95,8 +95,14 @@ impl GrammarBuilder {
         );
         cfg.remove_unused_rules();
         cfg.remove_duplicate_rules();
+        
+        println!("{}", cfg.rules().len());
+        cfg.expand_unit_rules();
+        println!("{}", cfg.rules().len());
         //TODO: convert to GNF
         //TODO: set new entrypoint if necessary
+        
+        println!("{:#?}", cfg);
         
         Ok(cfg)
     }

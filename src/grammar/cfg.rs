@@ -5,7 +5,7 @@ use petgraph::{graph::DiGraph, visit::Bfs};
 use nohash::IntSet as NoHashSet;
 use crate::grammar::builder::GrammarBuilder;
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub struct NonTerminal(pub(super) String);
 
 impl NonTerminal {
@@ -14,7 +14,7 @@ impl NonTerminal {
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub enum Numberset {
     I8(Vec<RangeInclusive<i8>>),
     U8(Vec<RangeInclusive<u8>>),
@@ -26,13 +26,13 @@ pub enum Numberset {
     U64(Vec<RangeInclusive<u64>>),
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub enum Terminal {
     Bytes(Vec<u8>),
     Numberset(Numberset),
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub enum Symbol {
     Terminal(Terminal),
     NonTerminal(NonTerminal),
@@ -46,9 +46,9 @@ pub struct ProductionRule {
 
 #[derive(Debug)]
 pub struct ContextFreeGrammar {
-    pub(super) entrypoint: NonTerminal,
-    pub(super) rules: Vec<ProductionRule>,
-    unused_rules: HashSet<String>,
+    entrypoint: NonTerminal,
+    rules: Vec<ProductionRule>,
+    unused_nonterms: HashSet<String>,
 }
 
 impl ContextFreeGrammar {
@@ -56,11 +56,23 @@ impl ContextFreeGrammar {
         GrammarBuilder::new()
     }
     
+    pub fn unused_nonterms(&self) -> &HashSet<String> {
+        &self.unused_nonterms
+    }
+    
+    pub fn rules(&self) -> &[ProductionRule] {
+        &self.rules
+    }
+    
+    pub fn entrypoint(&self) -> &NonTerminal {
+        &self.entrypoint
+    }
+    
     pub(super) fn new(entrypoint: NonTerminal, rules: Vec<ProductionRule>) -> Self {
         Self {
             entrypoint,
             rules,
-            unused_rules: HashSet::default(),
+            unused_nonterms: HashSet::default(),
         }
     }
     
@@ -70,7 +82,7 @@ impl ContextFreeGrammar {
         let mut nodes = HashMap::new();
         
         for rule in &self.rules {
-            self.unused_rules.insert(rule.lhs.id().to_owned());
+            self.unused_nonterms.insert(rule.lhs.id().to_owned());
             
             for symbol in &rule.rhs {
                 if let Symbol::NonTerminal(nonterm) = symbol {
@@ -88,14 +100,14 @@ impl ContextFreeGrammar {
         let mut bfs = Bfs::new(&graph, *entry);
         
         while let Some(node) = bfs.next(&graph) {
-            self.unused_rules.remove(graph[node]);
+            self.unused_nonterms.remove(graph[node]);
         }
         
         /* Remove unused rules */
         let mut i = 0;
         
         while i < self.rules.len() {
-            if self.unused_rules.contains(self.rules[i].lhs.id()) {
+            if self.unused_nonterms.contains(self.rules[i].lhs.id()) {
                 self.rules.remove(i);
             } else {
                 i += 1;
@@ -114,6 +126,36 @@ impl ContextFreeGrammar {
             } else {
                 i += 1;
             }
+        }
+    }
+    
+    pub(super) fn expand_unit_rules(&mut self) {
+        'outer:
+        loop {
+            let old_len = self.rules.len();
+            
+            for i in 0..old_len {
+                if let Symbol::NonTerminal(nonterm) = &self.rules[i].rhs[0] && self.rules[i].rhs.len() == 1 {
+                    assert_ne!(&self.rules[i].lhs, nonterm);
+                    
+                    let nonterm = nonterm.clone();
+                    
+                    for j in 0..old_len {
+                        if self.rules[j].lhs == nonterm {
+                            let new_rule = ProductionRule {
+                                lhs: self.rules[i].lhs.clone(),
+                                rhs: self.rules[j].rhs.clone(),
+                            };
+                            self.rules.push(new_rule);
+                        }
+                    }
+                    
+                    self.rules.remove(i);
+                    continue 'outer;
+                }
+            }
+            
+            break;
         }
     }
 }
