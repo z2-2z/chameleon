@@ -224,7 +224,6 @@ impl ContextFreeGrammar {
         let left_recursions = self.direct_left_recursions();
         
         for nonterm in left_recursions {
-            //self.nlrg_transform(&nonterm);
             self.remove_direct_left_recursion(&nonterm);
         }
     }
@@ -241,33 +240,6 @@ impl ContextFreeGrammar {
         
         set
     }
-    
-    /*
-    fn nlrg_transform(&mut self, nonterm: &NonTerminal) {
-        let mut non_left_recursive = Vec::new();
-        
-        for (i, rule) in self.rules.iter().enumerate().filter(|(_, x)| &x.lhs == nonterm) {
-            if !rule.is_left_recursive() {
-                non_left_recursive.push(i);
-            }
-        }
-        
-        if non_left_recursive.len() > 2 {
-            let new_nonterm = NonTerminal(format!("nlrg:{}", nonterm.id()));
-            
-            for i in non_left_recursive {
-                self.rules[i].lhs = new_nonterm.clone();
-            }
-            
-            self.rules.push(ProductionRule {
-                lhs: nonterm.clone(),
-                rhs: vec![
-                    Symbol::NonTerminal(new_nonterm)
-                ],
-            });
-        }
-    }
-    */
     
     fn remove_direct_left_recursion(&mut self, nonterm: &NonTerminal) {
         let new_nonterm = NonTerminal(format!("lr:{}", nonterm.id()));

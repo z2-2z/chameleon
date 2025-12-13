@@ -96,17 +96,16 @@ impl GrammarBuilder {
         cfg.remove_unused_rules();
         cfg.remove_duplicate_rules();
         
-        println!("{}", cfg.grammar_size());
-        cfg.expand_unit_rules();
-        println!("{}", cfg.grammar_size());
-        cfg.prepare_gnf();
-        println!("{}", cfg.grammar_size());
-        cfg.convert_to_gnf();
-        println!("{}", cfg.grammar_size());
-        cfg.set_new_entrypoint();
-        println!("{}", cfg.grammar_size());
+        #[cfg(debug_assertions)]
+        let prev_size = cfg.grammar_size();
         
-        println!("{:#?}", cfg);
+        cfg.expand_unit_rules();
+        cfg.prepare_gnf();
+        cfg.convert_to_gnf();
+        cfg.set_new_entrypoint();
+        
+        #[cfg(debug_assertions)]
+        println!("Grammar size went from {} -> {}", prev_size, cfg.grammar_size());
         
         Ok(cfg)
     }
