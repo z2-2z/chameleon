@@ -102,7 +102,6 @@ impl GrammarBuilder {
         cfg.expand_unit_rules();
         cfg.prepare_gnf();
         cfg.convert_to_gnf();
-        cfg.set_new_entrypoint();
         
         #[cfg(debug_assertions)]
         println!("Grammar size went from {} -> {}", prev_size, cfg.grammar_size());

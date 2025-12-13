@@ -3,6 +3,7 @@ use anyhow::Result;
 use mimalloc::MiMalloc;
 
 mod grammar;
+mod translator;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -70,7 +71,7 @@ fn translate(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
         println!("WARNING: The following non-terminals are unreachable when using entrypoint '{}': {:?}", cfg.entrypoint().id(), cfg.unused_nonterms());
     }
     
-    //println!("{:#?}", cfg);
+    println!("{:#?}", cfg);
     
     Ok(())
 }

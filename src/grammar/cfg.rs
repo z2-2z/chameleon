@@ -277,6 +277,9 @@ impl ContextFreeGrammar {
             
             break;
         }
+        
+        #[cfg(debug_assertions)]
+        self.verify();
     }
     
     fn expand_rule(&mut self, rule: ProductionRule) {
@@ -295,25 +298,14 @@ impl ContextFreeGrammar {
         }
     }
     
-    pub(super) fn set_new_entrypoint(&mut self) {
-        let mut count = 0;
-        
+    #[cfg(debug_assertions)]
+    fn verify(&self) {
         for rule in &self.rules {
-            if rule.lhs == self.entrypoint {
-                count += 1;
+            assert!(matches!(rule.rhs[0], Symbol::Terminal(_)));
+            
+            for symbol in &rule.rhs[1..] {
+                assert!(matches!(symbol, Symbol::NonTerminal(_)));
             }
-        }
-        
-        if count > 1 {
-            let new_nonterm = NonTerminal("(new entrypoint)".to_string());
-            let new_rule = ProductionRule {
-                lhs: new_nonterm.clone(),
-                rhs: vec![
-                    Symbol::NonTerminal(self.entrypoint.clone()),
-                ],
-            };
-            self.rules.push(new_rule);
-            self.entrypoint = new_nonterm;
         }
     }
 }
