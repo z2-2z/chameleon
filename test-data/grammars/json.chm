@@ -43,7 +43,7 @@ namespace json
     0x30..0x39, 0x41..0x46, 0x61..0x66
 }
 
-/* Disabling whitespaces:
+/* Disabling whitespaces...
 <WS> => (
     "" ||
     " " <WS> ||

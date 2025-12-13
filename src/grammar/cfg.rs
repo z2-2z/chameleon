@@ -44,6 +44,20 @@ pub struct ProductionRule {
     pub(super) rhs: Vec<Symbol>,
 }
 
+impl ProductionRule {
+    fn is_left_recursive(&self) -> bool {
+        if let Symbol::NonTerminal(nonterm) = &self.rhs[0] && &self.lhs == nonterm {
+            true
+        } else {
+            false
+        }
+    }
+    
+    fn is_in_gnf(&self) -> bool {
+        matches!(&self.rhs[0], Symbol::Terminal(_))
+    }
+}
+
 #[derive(Debug)]
 pub struct ContextFreeGrammar {
     entrypoint: NonTerminal,
@@ -66,6 +80,16 @@ impl ContextFreeGrammar {
     
     pub fn entrypoint(&self) -> &NonTerminal {
         &self.entrypoint
+    }
+    
+    pub fn grammar_size(&self) -> usize {
+        let mut size = 0;
+        
+        for rule in &self.rules {
+            size += rule.rhs.len();
+        }
+        
+        size
     }
     
     pub(super) fn new(entrypoint: NonTerminal, rules: Vec<ProductionRule>) -> Self {
@@ -163,6 +187,7 @@ impl ContextFreeGrammar {
         let mut nonterms: NoHashMap<u64, NonTerminal> = NoHashMap::default();
         let hasher = RandomState::new();
         let old_len = self.rules.len();
+        let mut cursor = 0;
         
         for i in 0..old_len {
             let rule = &self.rules[i];
@@ -179,7 +204,7 @@ impl ContextFreeGrammar {
                     if let Some(nonterm) = nonterms.get(&key) {
                         self.rules[i].rhs[j] = Symbol::NonTerminal(nonterm.clone());
                     } else {
-                        let nonterm = NonTerminal(format!("(terminal:{key})"));
+                        let nonterm = NonTerminal(format!("(terminal:{cursor})"));
                         nonterms.insert(key, nonterm.clone());
                         self.rules[i].rhs[j] = Symbol::NonTerminal(nonterm.clone());
                         self.rules.push(ProductionRule {
@@ -188,9 +213,135 @@ impl ContextFreeGrammar {
                                 Symbol::Terminal(term),
                             ],
                         });
+                        cursor += 1;
                     }
                 }
             }
+        }
+    }
+    
+    fn remove_left_recursions(&mut self) {
+        let left_recursions = self.direct_left_recursions();
+        
+        for nonterm in left_recursions {
+            //self.nlrg_transform(&nonterm);
+            self.remove_direct_left_recursion(&nonterm);
+        }
+    }
+    
+    fn direct_left_recursions(&self) -> HashSet<NonTerminal> {
+        let mut set = HashSet::default();
+        
+        for rule in &self.rules {
+            if rule.is_left_recursive() {
+                assert!(rule.rhs.len() > 1);
+                set.insert(rule.lhs.clone());
+            }
+        }
+        
+        set
+    }
+    
+    /*
+    fn nlrg_transform(&mut self, nonterm: &NonTerminal) {
+        let mut non_left_recursive = Vec::new();
+        
+        for (i, rule) in self.rules.iter().enumerate().filter(|(_, x)| &x.lhs == nonterm) {
+            if !rule.is_left_recursive() {
+                non_left_recursive.push(i);
+            }
+        }
+        
+        if non_left_recursive.len() > 2 {
+            let new_nonterm = NonTerminal(format!("nlrg:{}", nonterm.id()));
+            
+            for i in non_left_recursive {
+                self.rules[i].lhs = new_nonterm.clone();
+            }
+            
+            self.rules.push(ProductionRule {
+                lhs: nonterm.clone(),
+                rhs: vec![
+                    Symbol::NonTerminal(new_nonterm)
+                ],
+            });
+        }
+    }
+    */
+    
+    fn remove_direct_left_recursion(&mut self, nonterm: &NonTerminal) {
+        let new_nonterm = NonTerminal(format!("lr:{}", nonterm.id()));
+        
+        for rule in self.rules.iter_mut().filter(|x| &x.lhs == nonterm) {
+            if rule.is_left_recursive() {
+                rule.lhs = new_nonterm.clone();
+                rule.rhs.remove(0);
+                rule.rhs.push(Symbol::NonTerminal(new_nonterm.clone()));
+            } else {
+                rule.rhs.push(Symbol::NonTerminal(new_nonterm.clone()));
+            }
+        }
+        
+        self.rules.push(ProductionRule {
+            lhs: new_nonterm,
+            rhs: vec![
+                Symbol::Terminal(Terminal::Bytes(vec![])),
+            ],
+        });
+    }
+    
+    pub(super) fn convert_to_gnf(&mut self) {
+        'outer:
+        loop {
+            self.remove_left_recursions();
+            
+            for i in 0..self.rules.len() {
+                if !self.rules[i].is_in_gnf() {
+                    let rule = self.rules.remove(i);
+                    self.expand_rule(rule);
+                    continue 'outer;
+                }
+            }
+            
+            break;
+        }
+    }
+    
+    fn expand_rule(&mut self, rule: ProductionRule) {
+        let old_len = self.rules.len();
+        let Symbol::NonTerminal(nonterm) = &rule.rhs[0] else { unreachable!() };
+        
+        for i in 0..old_len {
+            if &self.rules[i].lhs == nonterm {
+                let mut new_rule = ProductionRule {
+                    lhs: rule.lhs.clone(),
+                    rhs: self.rules[i].rhs.clone(),
+                };
+                new_rule.rhs.extend_from_slice(&rule.rhs[1..]);
+                self.rules.push(new_rule);
+            }
+        }
+    }
+    
+    pub(super) fn set_new_entrypoint(&mut self) {
+        let mut count = 0;
+        
+        for rule in &self.rules {
+            if rule.lhs == self.entrypoint {
+                count += 1;
+            }
+        }
+        
+        if count > 1 {
+            let new_nonterm = NonTerminal("(new entrypoint)".to_string());
+            let new_rule = ProductionRule {
+                lhs: new_nonterm.clone(),
+                rhs: vec![
+                    Symbol::NonTerminal(self.entrypoint.clone()),
+                ],
+            };
+            self.rules.push(new_rule);
+            self.entrypoint = new_nonterm;
         }
     }
 }

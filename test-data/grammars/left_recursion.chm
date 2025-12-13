@@ -1,0 +1,10 @@
+/*
+https://en.wikipedia.org/wiki/Left_recursion#Uses
+*/
+
+
+<ENTRYPOINT> => <EXPRESSION>
+<EXPRESSION> => <TERM>
+<EXPRESSION> => <EXPRESSION> "+" <TERM>
+<EXPRESSION> => <EXPRESSION> "-" <TERM>
+<TERM> => "x"

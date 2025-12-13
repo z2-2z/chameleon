@@ -96,13 +96,15 @@ impl GrammarBuilder {
         cfg.remove_unused_rules();
         cfg.remove_duplicate_rules();
         
-        println!("{}", cfg.rules().len());
+        println!("{}", cfg.grammar_size());
         cfg.expand_unit_rules();
-        println!("{}", cfg.rules().len());
+        println!("{}", cfg.grammar_size());
         cfg.prepare_gnf();
-        println!("{}", cfg.rules().len());
-        //TODO: convert to GNF
-        //TODO: set new entrypoint if necessary
+        println!("{}", cfg.grammar_size());
+        cfg.convert_to_gnf();
+        println!("{}", cfg.grammar_size());
+        cfg.set_new_entrypoint();
+        println!("{}", cfg.grammar_size());
         
         println!("{:#?}", cfg);
         
