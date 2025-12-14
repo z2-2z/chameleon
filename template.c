@@ -9,19 +9,26 @@ typedef struct {
     unsigned int* steps;
     size_t length;
     size_t capacity;
-} PeacockWalk;
+} ChameleonWalk;
 
 const unsigned char TERMINAL[1] = {0};
 
-#ifndef OMIT_PEACOCK_INIT
-void peacock_init (PeacockWalk* walk, size_t capacity) {
+#ifndef OMIT_CHAMELEON_INIT
+void chameleon_init (ChameleonWalk* walk, size_t capacity) {
     walk->steps = malloc(capacity * sizeof(unsigned int));
     walk->length = 0;
     walk->capacity = capacity;
 }
-#endif /* OMIT_PEACOCK_INIT */
+#endif /* OMIT_CHAMELEON_INIT */
 
-#ifndef OMIT_PEACOCK_MUTATE
+#ifndef OMIT_CHAMELEON_DESTROY
+void chameleon_destroy (ChameleonWalk* walk) {
+    free(walk->steps);
+    __builtin_memset(walk, 0, sizeof(ChameleonWalk));
+}
+#endif /* OMIT_CHAMELEON_DESTROY */
+
+#if !defined(OMIT_CHAMELEON_MUTATE) || !defined(OMIT_CHAMELEON_GENERATE)
 static size_t _mutate_nonterm_X (unsigned int* steps, size_t* length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     unsigned int limited = 0, mutate, rule;
     size_t r, s = (*step)++;
@@ -73,17 +80,20 @@ static size_t _mutate_nonterm_X (unsigned int* steps, size_t* length, const size
     
     return (size_t) (output - original_output);
 }
+#endif
 
-size_t peacock_mutate (PeacockWalk* walk, unsigned char* output, size_t output_length) {
+#ifdef OMIT_CHAMELEON_MUTATE
+size_t chameleon_mutate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
     size_t step = 0;
     walk->length = random() % walk->length;
     return _mutate_nonterm_X(walk->steps, &walk->length, walk->capacity, &step, output, output_length);
 }
+#endif /* OMIT_CHAMELEON_MUTATE */
 
-size_t peacock_generate (PeacockWalk* walk, unsigned char* output, size_t output_length) {
+#ifdef OMIT_CHAMELEON_GENERATE
+size_t chameleon_generate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
     size_t step = 0;
     walk->length = 0;
     return _mutate_nonterm_X(walk->steps, &walk->length, walk->capacity, &step, output, output_length);
 }
-
-#endif /* OMIT_PEACOCK_MUTATE */
+#endif /* OMIT_CHAMELEON_GENERATE */
