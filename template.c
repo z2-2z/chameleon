@@ -42,8 +42,6 @@ static size_t _mutate_nonterm_Y (unsigned int* steps, const size_t length, const
     }
     
     if (s >= length) {
-        steps[s] = 0;
-        
         /* Terminal: */
         if (UNLIKELY(sizeof(TERMINAL) > output_length)) {
             return 0;
@@ -137,3 +135,5 @@ size_t chameleon_generate (ChameleonWalk* walk, unsigned char* output, size_t ou
     return _mutate_nonterm_X(walk->steps, 0, walk->capacity, &walk->length, output, output_length);
 }
 #endif /* OMIT_CHAMELEON_GENERATE */
+
+//TODO: chameleon_parse
