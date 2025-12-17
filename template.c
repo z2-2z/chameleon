@@ -1,3 +1,5 @@
+// gcc -shared -o /dev/null -fPIC template.c -Wall -Wextra -Wpedantic -DNUM_RULES=3
+
 #include <stdlib.h>
 
 #undef UNLIKELY
@@ -29,19 +31,55 @@ void chameleon_destroy (ChameleonWalk* walk) {
 #endif /* OMIT_CHAMELEON_DESTROY */
 
 #if !defined(OMIT_CHAMELEON_MUTATE) || !defined(OMIT_CHAMELEON_GENERATE)
-static size_t _mutate_nonterm_X (unsigned int* steps, size_t* length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
-    unsigned int limited = 0, mutate, rule;
-    size_t r, s = (*step)++;
+// One production rule
+static size_t _mutate_nonterm_Y (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+    unsigned int hit_limit = 0; size_t r;
+    size_t s = (*step)++;
     unsigned char* original_output = output;
     
     if (UNLIKELY(s >= capacity)) {
         return 0;
     }
     
-    mutate = (s >= *length);
+    if (s >= length) {
+        steps[s] = 0;
+        
+        /* Terminal: */
+        if (UNLIKELY(sizeof(TERMINAL) > output_length)) {
+            return 0;
+        }
+        __builtin_memcpy(output, TERMINAL, sizeof(TERMINAL));
+        output += sizeof(TERMINAL);
+        output_length -= sizeof(TERMINAL);
+    }
+    
+    /* Non-terminals */
+    r = _mutate_nonterm_Y(steps, length, capacity, step, output, output_length);
+    output += r;
+    output_length -= r;
+    hit_limit |= !r;
+    
+    if (UNLIKELY(hit_limit)) {
+        return 0;
+    }
+    
+    return (size_t) (output - original_output);
+}
+
+// Multiple production rules
+static size_t _mutate_nonterm_X (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+    unsigned int hit_limit = 0; size_t r;
+    unsigned int mutate, rule;
+    size_t s = (*step)++;
+    unsigned char* original_output = output;
+    
+    if (UNLIKELY(s >= capacity)) {
+        return 0;
+    }
+    
+    mutate = (s >= length);
     
     if (mutate) {
-        *length = s + 1;
         rule = random() % NUM_RULES;
         steps[s] = rule;
     } else {
@@ -61,15 +99,15 @@ static size_t _mutate_nonterm_X (unsigned int* steps, size_t* length, const size
             output_length -= sizeof(TERMINAL);
             
             /* Non-terminals */
-            r = _mutate_nonterm_X(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_Y(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
-            limited |= !r;
+            hit_limit |= !r;
             
-            /* end: */
-            if (UNLIKELY(limited)) {
+            if (UNLIKELY(hit_limit)) {
                 return 0;
             }
+            
             break;
         }
         
@@ -82,18 +120,20 @@ static size_t _mutate_nonterm_X (unsigned int* steps, size_t* length, const size
 }
 #endif
 
-#ifdef OMIT_CHAMELEON_MUTATE
+#ifndef OMIT_CHAMELEON_MUTATE
 size_t chameleon_mutate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
-    size_t step = 0;
-    walk->length = random() % walk->length;
-    return _mutate_nonterm_X(walk->steps, &walk->length, walk->capacity, &step, output, output_length);
+    size_t length = 0;
+    if (LIKELY(walk->length > 0)) {
+        length = random() % walk->length;
+    }
+    walk->length = 0;
+    return _mutate_nonterm_X(walk->steps, length, walk->capacity, &walk->length, output, output_length);
 }
 #endif /* OMIT_CHAMELEON_MUTATE */
 
-#ifdef OMIT_CHAMELEON_GENERATE
+#ifndef OMIT_CHAMELEON_GENERATE
 size_t chameleon_generate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
-    size_t step = 0;
     walk->length = 0;
-    return _mutate_nonterm_X(walk->steps, &walk->length, walk->capacity, &step, output, output_length);
+    return _mutate_nonterm_X(walk->steps, 0, walk->capacity, &walk->length, output, output_length);
 }
 #endif /* OMIT_CHAMELEON_GENERATE */
