@@ -2,16 +2,22 @@ use std::collections::HashMap;
 use crate::grammar::{Terminal, ContextFreeGrammar, Symbol as CfgSymbol};
 
 #[derive(Debug, PartialEq, Eq)]
-struct NonTerminal(usize);
+pub struct NonTerminal(usize);
+
+impl NonTerminal {
+    pub fn id(&self) -> usize {
+        self.0
+    }
+}
 
 #[derive(Debug)]
-enum Symbol {
+pub enum Symbol {
     Terminal(Terminal),
     NonTerminal(NonTerminal),
 }
 
 #[derive(Debug)]
-struct RuleSet {
+pub struct RuleSet {
     nonterm: NonTerminal,
     rules: Vec<Vec<Symbol>>,
 }
@@ -100,5 +106,13 @@ pub struct TranslatorGrammar {
 impl TranslatorGrammar {
     pub fn converter<'a>() -> TranslatorGrammarConverter<'a> {
         TranslatorGrammarConverter::new()
+    }
+    
+    pub fn entrypoint(&self) -> &NonTerminal {
+        &self.entrypoint
+    }
+    
+    pub fn rules(&self) -> &[RuleSet] {
+        &self.rules
     }
 }
