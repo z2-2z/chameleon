@@ -9,7 +9,7 @@ use crate::grammar::builder::GrammarBuilder;
 pub struct NonTerminal(pub(super) String);
 
 impl NonTerminal {
-    pub fn id(&self) -> &str {
+    pub fn name(&self) -> &str {
         self.0.as_str()
     }
 }
@@ -55,6 +55,14 @@ impl ProductionRule {
     
     fn is_in_gnf(&self) -> bool {
         matches!(&self.rhs[0], Symbol::Terminal(_))
+    }
+    
+    pub fn lhs(&self) -> &NonTerminal {
+        &self.lhs
+    }
+    
+    pub fn rhs(&self) -> &[Symbol] {
+        &self.rhs
     }
 }
 
@@ -106,19 +114,19 @@ impl ContextFreeGrammar {
         let mut nodes = HashMap::new();
         
         for rule in &self.rules {
-            self.unused_nonterms.insert(rule.lhs.id().to_owned());
+            self.unused_nonterms.insert(rule.lhs.name().to_owned());
             
             for symbol in &rule.rhs {
                 if let Symbol::NonTerminal(nonterm) = symbol {
-                    let src = *nodes.entry(rule.lhs.id()).or_insert_with(|| graph.add_node(rule.lhs.id()));
-                    let dst = *nodes.entry(nonterm.id()).or_insert_with(|| graph.add_node(nonterm.id()));
+                    let src = *nodes.entry(rule.lhs.name()).or_insert_with(|| graph.add_node(rule.lhs.name()));
+                    let dst = *nodes.entry(nonterm.name()).or_insert_with(|| graph.add_node(nonterm.name()));
                     graph.update_edge(src, dst, ());
                 }
             }
         }
         
         /* Search graph */
-        let Some(entry) = nodes.get(self.entrypoint.id()) else {
+        let Some(entry) = nodes.get(self.entrypoint.name()) else {
             return;
         };
         let mut bfs = Bfs::new(&graph, *entry);
@@ -131,7 +139,7 @@ impl ContextFreeGrammar {
         let mut i = 0;
         
         while i < self.rules.len() {
-            if self.unused_nonterms.contains(self.rules[i].lhs.id()) {
+            if self.unused_nonterms.contains(self.rules[i].lhs.name()) {
                 self.rules.remove(i);
             } else {
                 i += 1;
@@ -242,7 +250,7 @@ impl ContextFreeGrammar {
     }
     
     fn remove_direct_left_recursion(&mut self, nonterm: &NonTerminal) {
-        let new_nonterm = NonTerminal(format!("lr:{}", nonterm.id()));
+        let new_nonterm = NonTerminal(format!("lr:{}", nonterm.name()));
         
         for rule in self.rules.iter_mut().filter(|x| &x.lhs == nonterm) {
             if rule.is_left_recursive() {

@@ -66,7 +66,7 @@ static size_t _mutate_nonterm_Y (unsigned int* steps, const size_t length, const
 
 // Multiple production rules
 static size_t _mutate_nonterm_X (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
-    unsigned int hit_limit = 0; size_t r;
+    int hit_limit = 0; size_t r;
     unsigned int mutate, rule;
     size_t s = (*step)++;
     unsigned char* original_output = output;
@@ -87,7 +87,7 @@ static size_t _mutate_nonterm_X (unsigned int* steps, const size_t length, const
     switch (rule) {
         case 0: {
             /* Terminals */
-            if (mutate) {
+            if (mutate) { //TODO: does this increase performance ?
                 if (UNLIKELY(sizeof(TERMINAL) > output_length)) {
                     return 0;
                 }
