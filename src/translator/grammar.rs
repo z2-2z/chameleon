@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::grammar::{Terminal, ContextFreeGrammar, Symbol as CfgSymbol};
+use crate::grammar::{Terminal as CfgTerminal, Numberset, ContextFreeGrammar, Symbol as CfgSymbol};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct NonTerminal(usize);
@@ -8,6 +8,12 @@ impl NonTerminal {
     pub fn id(&self) -> usize {
         self.0
     }
+}
+
+#[derive(Debug)]
+pub enum Terminal {
+    Numberset(usize),
+    Bytes(Vec<u8>),
 }
 
 #[derive(Debug)]
@@ -23,17 +29,21 @@ pub struct RuleSet {
 }
 
 pub struct TranslatorGrammarConverter<'a> {
-    cursor: usize,
+    nonterm_cursor: usize,
     mapping: HashMap<&'a str, usize>,
     rules: Vec<RuleSet>,
+    numberset_cursor: usize,
+    numbersets: HashMap<Numberset, usize>,
 }
 
 impl<'a>  TranslatorGrammarConverter<'a> {
     fn new() -> Self {
         Self {
-            cursor: 0,
+            nonterm_cursor: 0,
             mapping: HashMap::default(),
             rules: Vec::new(),
+            numberset_cursor: 0,
+            numbersets: HashMap::default(),
         }
     }
     
@@ -41,9 +51,20 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         if let Some(id) = self.mapping.get(nonterm) {
             *id
         } else {
-            let id = self.cursor;
-            self.cursor += 1;
+            let id = self.nonterm_cursor;
+            self.nonterm_cursor += 1;
             self.mapping.insert(nonterm, id);
+            id
+        }
+    }
+    
+    fn numberset_id(&mut self, numberset: &'a Numberset) -> usize {
+        if let Some(id) = self.numbersets.get(numberset) {
+            *id
+        } else {
+            let id = self.numberset_cursor;
+            self.numberset_cursor += 1;
+            self.numbersets.insert(numberset.clone(), id);
             id
         }
     }
@@ -53,7 +74,13 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         
         for symbol in rhs {
             let symbol = match symbol {
-                CfgSymbol::Terminal(terminal) => Symbol::Terminal(terminal.clone()),
+                CfgSymbol::Terminal(terminal) => match terminal {
+                    CfgTerminal::Bytes(items) => Symbol::Terminal(Terminal::Bytes(items.clone())),
+                    CfgTerminal::Numberset(numberset) => {
+                        let id = self.numberset_id(numberset);
+                        Symbol::Terminal(Terminal::Numberset(id))
+                    },
+                },
                 CfgSymbol::NonTerminal(nonterm) => {
                     let id = self.nonterm_id(nonterm.name());
                     Symbol::NonTerminal(NonTerminal(id))
@@ -93,6 +120,7 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         TranslatorGrammar {
             entrypoint: NonTerminal(entrypoint),
             rules: self.rules,
+            numbersets: self.numbersets,
         }
     }
 }
@@ -101,6 +129,7 @@ impl<'a>  TranslatorGrammarConverter<'a> {
 pub struct TranslatorGrammar {
     entrypoint: NonTerminal,
     rules: Vec<RuleSet>,
+    numbersets: HashMap<Numberset, usize>,
 }
 
 impl TranslatorGrammar {
@@ -114,5 +143,9 @@ impl TranslatorGrammar {
     
     pub fn rules(&self) -> &[RuleSet] {
         &self.rules
+    }
+    
+    pub fn numbersets(&self) -> &HashMap<Numberset, usize> {
+        &self.numbersets
     }
 }

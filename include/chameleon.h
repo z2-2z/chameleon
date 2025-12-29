@@ -1,6 +1,7 @@
 #ifndef _CHAMELEON_H
 #define _CHAMELEON_H
 
+// Details of ChameleonWalk are private to the generated code
 typedef unsigned char ChameleonWalk[32];
 
 void chameleon_init (ChameleonWalk walk, unsigned long capacity);
