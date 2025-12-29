@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::borrow::ToOwned;
 use crate::grammar::{Terminal as CfgTerminal, Numberset, ContextFreeGrammar, Symbol as CfgSymbol};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -13,7 +14,7 @@ impl NonTerminal {
 #[derive(Debug)]
 pub enum Terminal {
     Numberset(usize),
-    Bytes(Vec<u8>),
+    Bytes(usize),
 }
 
 #[derive(Debug)]
@@ -28,32 +29,41 @@ pub struct RuleSet {
     rules: Vec<Vec<Symbol>>,
 }
 
+#[inline]
+fn reverse_id_map<T: ToOwned + ?Sized>(map: HashMap<&T, usize>) -> HashMap<usize, T::Owned> {
+    map.into_iter().map(|(k, v)| (v, k.to_owned())).collect()
+}
+
 pub struct TranslatorGrammarConverter<'a> {
     nonterm_cursor: usize,
-    mapping: HashMap<&'a str, usize>,
+    nonterms: HashMap<&'a str, usize>,
     rules: Vec<RuleSet>,
     numberset_cursor: usize,
-    numbersets: HashMap<Numberset, usize>,
+    numbersets: HashMap<&'a Numberset, usize>,
+    terminal_cursor: usize,
+    terminals: HashMap<&'a Vec<u8>, usize>,
 }
 
 impl<'a>  TranslatorGrammarConverter<'a> {
     fn new() -> Self {
         Self {
             nonterm_cursor: 0,
-            mapping: HashMap::default(),
+            nonterms: HashMap::default(),
             rules: Vec::new(),
             numberset_cursor: 0,
             numbersets: HashMap::default(),
+            terminal_cursor: 0,
+            terminals: HashMap::default(),
         }
     }
     
     fn nonterm_id(&mut self, nonterm: &'a str) -> usize {
-        if let Some(id) = self.mapping.get(nonterm) {
+        if let Some(id) = self.nonterms.get(nonterm) {
             *id
         } else {
             let id = self.nonterm_cursor;
             self.nonterm_cursor += 1;
-            self.mapping.insert(nonterm, id);
+            self.nonterms.insert(nonterm, id);
             id
         }
     }
@@ -64,7 +74,18 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         } else {
             let id = self.numberset_cursor;
             self.numberset_cursor += 1;
-            self.numbersets.insert(numberset.clone(), id);
+            self.numbersets.insert(numberset, id);
+            id
+        }
+    }
+    
+    fn terminal_id(&mut self, terminal: &'a Vec<u8>) -> usize {
+        if let Some(id) = self.terminals.get(terminal) {
+            *id
+        } else {
+            let id = self.terminal_cursor;
+            self.terminal_cursor += 1;
+            self.terminals.insert(terminal, id);
             id
         }
     }
@@ -75,7 +96,10 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         for symbol in rhs {
             let symbol = match symbol {
                 CfgSymbol::Terminal(terminal) => match terminal {
-                    CfgTerminal::Bytes(items) => Symbol::Terminal(Terminal::Bytes(items.clone())),
+                    CfgTerminal::Bytes(items) => {
+                        let id = self.terminal_id(items);
+                        Symbol::Terminal(Terminal::Bytes(id))
+                    },
                     CfgTerminal::Numberset(numberset) => {
                         let id = self.numberset_id(numberset);
                         Symbol::Terminal(Terminal::Numberset(id))
@@ -120,7 +144,9 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         TranslatorGrammar {
             entrypoint: NonTerminal(entrypoint),
             rules: self.rules,
-            numbersets: self.numbersets,
+            numbersets: reverse_id_map(self.numbersets),
+            nonterminals: reverse_id_map(self.nonterms),
+            terminals: reverse_id_map(self.terminals),
         }
     }
 }
@@ -129,7 +155,9 @@ impl<'a>  TranslatorGrammarConverter<'a> {
 pub struct TranslatorGrammar {
     entrypoint: NonTerminal,
     rules: Vec<RuleSet>,
-    numbersets: HashMap<Numberset, usize>,
+    numbersets: HashMap<usize, Numberset>,
+    nonterminals: HashMap<usize, String>,
+    terminals: HashMap<usize, Vec<u8>>,
 }
 
 impl TranslatorGrammar {
@@ -145,7 +173,15 @@ impl TranslatorGrammar {
         &self.rules
     }
     
-    pub fn numbersets(&self) -> &HashMap<Numberset, usize> {
-        &self.numbersets
+    pub fn numberset(&self, id: usize) -> &Numberset {
+        self.numbersets.get(&id).unwrap()
+    }
+    
+    pub fn nonterminal(&self, id: usize) -> &str {
+        self.nonterminals.get(&id).unwrap()
+    }
+    
+    pub fn terminal(&self, id: usize) -> &[u8] {
+        self.terminals.get(&id).unwrap()
     }
 }
