@@ -75,6 +75,10 @@ fn translate(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
     
     println!("{:#?}", cfg);
     
+    let result = translator::templates::render(cfg);
+    
+    println!("{result}");
+    
     Ok(())
 }
 
