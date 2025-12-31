@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::borrow::ToOwned;
-use serde::Serialize;
 use crate::grammar::{Terminal as CfgTerminal, Numberset, ContextFreeGrammar, Symbol as CfgSymbol};
 
-#[derive(Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct NonTerminal(usize);
 
 impl NonTerminal {
@@ -12,19 +11,19 @@ impl NonTerminal {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub enum Terminal {
     Numberset(usize),
     Bytes(usize),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub enum Symbol {
     Terminal(Terminal),
     NonTerminal(NonTerminal),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct RuleSet {
     nonterm: NonTerminal,
     rules: Vec<Vec<Symbol>>,
@@ -152,7 +151,7 @@ impl<'a>  TranslatorGrammarConverter<'a> {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct TranslatorGrammar {
     entrypoint: NonTerminal,
     rules: Vec<RuleSet>,
@@ -184,5 +183,9 @@ impl TranslatorGrammar {
     
     pub fn terminal(&self, id: usize) -> &[u8] {
         self.terminals.get(&id).unwrap()
+    }
+    
+    pub fn terminals(&self) -> &HashMap<usize, Vec<u8>> {
+        &self.terminals
     }
 }

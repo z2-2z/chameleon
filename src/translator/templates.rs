@@ -1,10 +1,15 @@
 use crate::translator::TranslatorGrammar;
-use tinytemplate::TinyTemplate;
+use askama::Template;
 
-static ROOT: &str = include_str!("../templates/root.c");
+#[derive(askama::Template)]
+#[template(path = "root.c", escape = "none")]
+struct Root {
+    grammar: TranslatorGrammar,
+}
 
 pub fn render(grammar: TranslatorGrammar) -> String {
-    let mut renderer = TinyTemplate::new();
-    renderer.add_template("root", ROOT).unwrap();
-    renderer.render("root", &grammar).unwrap()
+    let root = Root {
+        grammar,
+    };
+    root.render().unwrap()
 }

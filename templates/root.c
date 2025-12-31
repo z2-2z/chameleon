@@ -33,21 +33,28 @@
 
 static THREAD_LOCAL size_t rand_state = STATIC_SEED;
 
-static inline size_t random (void) \{
+static inline size_t random (void) {
     size_t x = rand_state;
     x ^= x << 13;
     x ^= x >> 7;
     x ^= x << 17;
     return rand_state = x;
-\}
+}
 
 EXPORT_FUNCTION
-void chameleon_seed (size_t new_seed) \{
+void chameleon_seed (size_t new_seed) {
     rand_state = new_seed;
-\}
+}
 
 /***** TERMINALS *****/
 
-{{- for (idx, content) in terminals -}}
-    static const unsigned char TERMINAL_{idx}[{content.len()}] = \{\};
-{{- endfor }}
+{% for (id, content) in grammar.terminals() -%}
+{%- if !content.is_empty() -%}
+static const unsigned char TERMINAL_{{ id }}[{{ content.len() }}] = {
+    {% for byte in content -%}
+        {{ "{:#02x}" | format(byte) }}
+        {%- if !loop.last %},{% endif %}
+    {%- endfor %}
+};
+{% endif -%}
+{% endfor %}

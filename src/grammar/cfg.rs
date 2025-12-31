@@ -14,7 +14,7 @@ impl NonTerminal {
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone, serde::Serialize)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub enum Numberset {
     I8(Vec<RangeInclusive<i8>>),
     U8(Vec<RangeInclusive<u8>>),
