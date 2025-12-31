@@ -29,6 +29,14 @@
  #define CHAMELEON_SEED 1739639165216539016ULL
 #endif
 
+/***** TYPES *****/
+
+typedef struct {
+    unsigned int* steps;
+    size_t length;
+    size_t capacity;
+} ChameleonWalk;
+
 /***** PRNG *****/
 
 static THREAD_LOCAL size_t rand_state = STATIC_SEED;
@@ -39,11 +47,6 @@ static inline size_t random (void) {
     x ^= x >> 7;
     x ^= x << 17;
     return rand_state = x;
-}
-
-EXPORT_FUNCTION
-void chameleon_seed (size_t new_seed) {
-    rand_state = new_seed;
 }
 
 /***** TERMINALS *****/
@@ -58,3 +61,58 @@ static const unsigned char TERMINAL_{{ id }}[{{ content.len() }}] = {
 };
 {% endif -%}
 {% endfor %}
+
+/***** FUNCTIONS *****/
+{% for (id, _) in grammar.nonterminals() %}
+static size_t _mutate_nonterm_{{ id }} (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+{%- endfor %}
+
+#ifndef OMIT_CHAMELEON_SEED
+EXPORT_FUNCTION
+void chameleon_seed (size_t new_seed) {
+    rand_state = new_seed;
+}
+#endif /* OMIT_CHAMELEON_SEED */
+
+#ifndef OMIT_CHAMELEON_INIT
+EXPORT_FUNCTION
+void chameleon_init (ChameleonWalk* walk, size_t capacity) {
+    walk->steps = malloc(capacity * sizeof(unsigned int));
+    walk->length = 0;
+    walk->capacity = capacity;
+}
+#endif /* OMIT_CHAMELEON_INIT */
+
+#ifndef OMIT_CHAMELEON_DESTROY
+EXPORT_FUNCTION
+void chameleon_destroy (ChameleonWalk* walk) {
+    free(walk->steps);
+    __builtin_memset(walk, 0, sizeof(ChameleonWalk));
+}
+#endif /* OMIT_CHAMELEON_DESTROY */
+
+#ifndef OMIT_CHAMELEON_MUTATE
+EXPORT_FUNCTION
+size_t chameleon_mutate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
+    size_t length = 0;
+    if (LIKELY(walk->length > 0)) {
+        length = random() % walk->length;
+    }
+    walk->length = 0;
+    return _mutate_nonterm_{{ grammar.entrypoint().id() }}(walk->steps, length, walk->capacity, &walk->length, output, output_length);
+}
+#endif /* OMIT_CHAMELEON_MUTATE */
+
+#ifndef OMIT_CHAMELEON_GENERATE
+EXPORT_FUNCTION
+size_t chameleon_generate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
+    walk->length = 0;
+    return _mutate_nonterm_{{ grammar.entrypoint().id() }}(walk->steps, 0, walk->capacity, &walk->length, output, output_length);
+}
+#endif /* OMIT_CHAMELEON_GENERATE */
+
+#if !defined(OMIT_CHAMELEON_MUTATE) || !defined(OMIT_CHAMELEON_GENERATE)
+
+//TODO
+
+#endif

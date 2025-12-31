@@ -181,6 +181,10 @@ impl TranslatorGrammar {
         self.nonterminals.get(&id).unwrap()
     }
     
+    pub fn nonterminals(&self) -> &HashMap<usize, String> {
+        &self.nonterminals
+    }
+    
     pub fn terminal(&self, id: usize) -> &[u8] {
         self.terminals.get(&id).unwrap()
     }
