@@ -112,7 +112,47 @@ size_t chameleon_generate (ChameleonWalk* walk, unsigned char* output, size_t ou
 #endif /* OMIT_CHAMELEON_GENERATE */
 
 #if !defined(OMIT_CHAMELEON_MUTATE) || !defined(OMIT_CHAMELEON_GENERATE)
-
-//TODO
+{% for set in grammar.rules() %}
+static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+    int hit_limit = 0; size_t r;
+    unsigned int mutate, rule;
+    size_t s = (*step)++;
+    unsigned char* original_output = output;
+    
+    if (UNLIKELY(s >= capacity)) {
+        return 0;
+    }
+    
+    mutate = (s >= length);
+    
+    if (mutate) {
+        rule = random() % {{ set.rules().len() }};
+        steps[s] = rule;
+    } else {
+        rule = steps[s];
+    }
+    
+    switch (rule) {
+        {%- for (i, rule) in set.rules().iter().enumerate() %}
+        case {{ i }}: {
+            {%- for symbol in rule %}
+            //TODO: symbol
+            {%- endfor %}
+            
+            if (UNLIKELY(hit_limit)) {
+                return 0;
+            }
+            
+            break;
+        }
+        {% endfor %}
+        default: {
+            __builtin_unreachable();
+        }
+    }
+    
+    return (size_t) (output - original_output);
+}
+{% endfor %}
 
 #endif

@@ -29,6 +29,16 @@ pub struct RuleSet {
     rules: Vec<Vec<Symbol>>,
 }
 
+impl RuleSet {
+    pub fn nonterm(&self) -> &NonTerminal {
+        &self.nonterm
+    }
+    
+    pub fn rules(&self) -> &[Vec<Symbol>] {
+        &self.rules
+    }
+}
+
 #[inline]
 fn reverse_id_map<T: ToOwned + ?Sized>(map: HashMap<&T, usize>) -> HashMap<usize, T::Owned> {
     map.into_iter().map(|(k, v)| (v, k.to_owned())).collect()
