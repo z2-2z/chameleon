@@ -133,12 +133,22 @@ impl RuleSet {
         false
     }
     
-    pub fn has_no_symbols(&self) -> bool {
+    pub fn has_terms(&self) -> bool {
         for rule in &self.rules {
             for symbol in rule {
-                if matches!(symbol, Symbol::NonTerminal(_)) {
-                    return false;
+                if matches!(symbol, Symbol::Terminal(_)) {
+                    return true;
                 }
+            }
+        }
+        
+        false
+    }
+    
+    pub fn has_no_symbols(&self) -> bool {
+        for rule in &self.rules {
+            if !rule.is_empty() {
+                return false;
             }
         }
         
