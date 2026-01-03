@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::borrow::ToOwned;
-use crate::grammar::{Terminal as CfgTerminal, Numberset, ContextFreeGrammar, Symbol as CfgSymbol};
+use std::ops::RangeInclusive;
+use crate::grammar::{Terminal as CfgTerminal, Numberset as CfgNumberset, ContextFreeGrammar, Symbol as CfgSymbol};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct NonTerminal(usize);
@@ -8,6 +9,101 @@ pub struct NonTerminal(usize);
 impl NonTerminal {
     pub fn id(&self) -> usize {
         self.0
+    }
+}
+
+#[derive(Debug)]
+pub enum NumbersetType {
+    U8,
+    I8,
+    U16,
+    I16,
+    U32,
+    I32,
+    U64,
+    I64,
+}
+
+impl NumbersetType {
+    pub fn c_type(&self) -> &str {
+        match self {
+            NumbersetType::U8 => "uint8_t",
+            NumbersetType::I8 => "int8_t",
+            NumbersetType::U16 => "uint16_t",
+            NumbersetType::I16 => "int16_t",
+            NumbersetType::U32 => "uint32_t",
+            NumbersetType::I32 => "int32_t",
+            NumbersetType::U64 => "uint64_t",
+            NumbersetType::I64 => "int64_t",
+        }
+    }
+    
+    pub fn c_suffix(&self) -> &str {
+        match self {
+            NumbersetType::U8 => "U",
+            NumbersetType::I8 => "",
+            NumbersetType::U16 => "U",
+            NumbersetType::I16 => "",
+            NumbersetType::U32 => "U",
+            NumbersetType::I32 => "",
+            NumbersetType::U64 => "ULL",
+            NumbersetType::I64 => "LL",
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Numberset {
+    typ: NumbersetType,
+    set: Vec<RangeInclusive<usize>>,
+}
+
+impl Numberset {
+    pub fn typ(&self) -> &NumbersetType {
+        &self.typ
+    }
+    
+    pub fn set(&self) -> &[RangeInclusive<usize>] {
+        &self.set
+    }
+}
+
+impl From<&CfgNumberset> for Numberset {
+    fn from(value: &CfgNumberset) -> Self {
+        match value {
+            CfgNumberset::I8(ranges) => Self {
+                typ: NumbersetType::I8,
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+            },
+            CfgNumberset::U8(ranges) => Self {
+                typ: NumbersetType::U8,
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+            },
+            CfgNumberset::I16(ranges) => Self {
+                typ: NumbersetType::I16,
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+            },
+            CfgNumberset::U16(ranges) => Self {
+                typ: NumbersetType::U16,
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+            },
+            CfgNumberset::I32(ranges) => Self {
+                typ: NumbersetType::I32,
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+            },
+            CfgNumberset::U32(ranges) => Self {
+                typ: NumbersetType::U32,
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+            },
+            CfgNumberset::I64(ranges) => Self {
+                typ: NumbersetType::I64,
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+            },
+            CfgNumberset::U64(ranges) => Self {
+                typ: NumbersetType::U64,
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+            },
+        }
     }
 }
 
@@ -49,7 +145,7 @@ pub struct TranslatorGrammarConverter<'a> {
     nonterms: HashMap<&'a str, usize>,
     rules: Vec<RuleSet>,
     numberset_cursor: usize,
-    numbersets: HashMap<&'a Numberset, usize>,
+    numbersets: HashMap<&'a CfgNumberset, usize>,
     terminal_cursor: usize,
     terminals: HashMap<&'a Vec<u8>, usize>,
 }
@@ -78,7 +174,7 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         }
     }
     
-    fn numberset_id(&mut self, numberset: &'a Numberset) -> usize {
+    fn numberset_id(&mut self, numberset: &'a CfgNumberset) -> usize {
         if let Some(id) = self.numbersets.get(numberset) {
             *id
         } else {
@@ -150,11 +246,12 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         }
         
         let entrypoint = self.nonterm_id(cfg.entrypoint().name());
+        let numbersets = self.numbersets.into_iter().map(|(k, v)| (v, Numberset::from(k))).collect();
         
         TranslatorGrammar {
             entrypoint: NonTerminal(entrypoint),
             rules: self.rules,
-            numbersets: reverse_id_map(self.numbersets),
+            numbersets,
             nonterminals: reverse_id_map(self.nonterms),
             terminals: reverse_id_map(self.terminals),
         }
@@ -185,6 +282,10 @@ impl TranslatorGrammar {
     
     pub fn numberset(&self, id: usize) -> &Numberset {
         self.numbersets.get(&id).unwrap()
+    }
+    
+    pub fn numbersets(&self) -> &HashMap<usize, Numberset> {
+        &self.numbersets
     }
     
     pub fn nonterminal(&self, id: usize) -> &str {
