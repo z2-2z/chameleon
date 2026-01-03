@@ -46,7 +46,9 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
         _mutate_numberset_{{ id }}(output);
     }
     output += sizeof({{ numberset.typ().c_type() }});
+    {%- if !loop.last %}
     output_length -= sizeof({{ numberset.typ().c_type() }});
+    {%- endif %}
     {%- when crate::translator::Terminal::Bytes(id) %}
     if (mutate) {
         if (UNLIKELY(sizeof(TERMINAL_{{ id }}) > output_length)) {
@@ -55,12 +57,16 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
         __builtin_memcpy(output, TERMINAL_{{ id }}, sizeof(TERMINAL_{{ id }}));
     }
     output += sizeof(TERMINAL_{{ id }});
+    {%- if !loop.last %}
     output_length -= sizeof(TERMINAL_{{ id }});
+    {%- endif %}
     {%- endmatch %}
     {%- when crate::translator::Symbol::NonTerminal(nonterm) %}
     r = _mutate_nonterm_{{ nonterm.id() }}(steps, length, capacity, step, output, output_length);
     output += r;
+    {%- if !loop.last %}
     output_length -= r;
+    {%- endif %}
     {%- endmatch %}
     {%- endfor %}
     
@@ -109,7 +115,9 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
                 _mutate_numberset_{{ id }}(output);
             }
             output += sizeof({{ numberset.typ().c_type() }});
+            {%- if !loop.last %}
             output_length -= sizeof({{ numberset.typ().c_type() }});
+            {%- endif %}
             {%- when crate::translator::Terminal::Bytes(id) %}
             if (mutate) {
                 if (UNLIKELY(sizeof(TERMINAL_{{ id }}) > output_length)) {
@@ -118,12 +126,16 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
                 __builtin_memcpy(output, TERMINAL_{{ id }}, sizeof(TERMINAL_{{ id }}));
             }
             output += sizeof(TERMINAL_{{ id }});
+            {%- if !loop.last %}
             output_length -= sizeof(TERMINAL_{{ id }});
+            {%- endif %}
             {%- endmatch %}
             {%- when crate::translator::Symbol::NonTerminal(nonterm) %}
             r = _mutate_nonterm_{{ nonterm.id() }}(steps, length, capacity, step, output, output_length);
             output += r;
+            {%- if !loop.last %}
             output_length -= r;
+            {%- endif %}
             {%- endmatch %}
             {%- endfor %}
             break;

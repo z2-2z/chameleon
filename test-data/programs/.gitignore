@@ -1,3 +1,4 @@
 json.c
 main
 bench
+bench.disas
