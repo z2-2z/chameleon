@@ -1,9 +1,9 @@
 namespace STD
 
-<X> => (<OTHER::A> ("z" || "a") || "b")
-<Y> => ((
+<X> => (<STD::SECOND::YEET> ("z" || "a") || "b")
+/*<Y> => ((
     <Y> 
-) ((<Z>)))
+) ((<Z>)))*/
 
 no namespace
 

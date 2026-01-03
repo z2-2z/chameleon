@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::borrow::ToOwned;
 use std::ops::RangeInclusive;
 use crate::grammar::{Terminal as CfgTerminal, Numberset as CfgNumberset, ContextFreeGrammar, Symbol as CfgSymbol};
@@ -55,7 +55,7 @@ impl NumbersetType {
 #[derive(Debug)]
 pub struct Numberset {
     typ: NumbersetType,
-    set: Vec<RangeInclusive<usize>>,
+    set: HashSet<RangeInclusive<u64>>,
 }
 
 impl Numberset {
@@ -63,7 +63,7 @@ impl Numberset {
         &self.typ
     }
     
-    pub fn set(&self) -> &[RangeInclusive<usize>] {
+    pub fn set(&self) -> &HashSet<RangeInclusive<u64>> {
         &self.set
     }
 }
@@ -73,35 +73,35 @@ impl From<&CfgNumberset> for Numberset {
         match value {
             CfgNumberset::I8(ranges) => Self {
                 typ: NumbersetType::I8,
-                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as u8 as u64, *r.end() as u8 as u64)).collect(),
             },
             CfgNumberset::U8(ranges) => Self {
                 typ: NumbersetType::U8,
-                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as u64, *r.end() as u64)).collect(),
             },
             CfgNumberset::I16(ranges) => Self {
                 typ: NumbersetType::I16,
-                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as u16 as u64, *r.end() as u16 as u64)).collect(),
             },
             CfgNumberset::U16(ranges) => Self {
                 typ: NumbersetType::U16,
-                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as u64, *r.end() as u64)).collect(),
             },
             CfgNumberset::I32(ranges) => Self {
                 typ: NumbersetType::I32,
-                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as u32 as u64, *r.end() as u32 as u64)).collect(),
             },
             CfgNumberset::U32(ranges) => Self {
                 typ: NumbersetType::U32,
-                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as u64, *r.end() as u64)).collect(),
             },
             CfgNumberset::I64(ranges) => Self {
                 typ: NumbersetType::I64,
-                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as u64, *r.end() as u64)).collect(),
             },
             CfgNumberset::U64(ranges) => Self {
                 typ: NumbersetType::U64,
-                set: ranges.iter().map(|r| RangeInclusive::new(*r.start() as usize, *r.end() as usize)).collect(),
+                set: ranges.iter().cloned().collect(),
             },
         }
     }

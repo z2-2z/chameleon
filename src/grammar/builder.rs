@@ -143,9 +143,23 @@ impl GrammarBuilder {
             ($t:ty, $v:ident) => {{
                 let mut set = Vec::new();
                 
+                #[allow(unused_comparisons, arithmetic_overflow)]
                 for token in &tokens[1..] {
                     let Token::NumberRange(start, end) = token else { unreachable!() };
-                    set.push(RangeInclusive::new(*start as $t, *end as $t));
+                    const ZERO: $t = 0 as $t;
+                    let s = *start as $t;
+                    let e = *end as $t;
+                    let l = std::cmp::min(s, e);
+                    let u = std::cmp::max(s, e);
+                    
+                    if (l < 0) && (u < 0) {
+                        set.push(RangeInclusive::new(u, l));
+                    } else if (l < 0) && (u >= 0) {
+                        set.push(RangeInclusive::new(l, ZERO - 1));
+                        set.push(RangeInclusive::new(ZERO, u));
+                    } else {
+                        set.push(RangeInclusive::new(l, u));
+                    }
                 }
                 
                 Numberset::$v(set)
