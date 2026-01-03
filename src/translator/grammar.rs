@@ -190,6 +190,9 @@ impl<'a>  TranslatorGrammarConverter<'a> {
             let symbol = match symbol {
                 CfgSymbol::Terminal(terminal) => match terminal {
                     CfgTerminal::Bytes(items) => {
+                        if items.is_empty() {
+                            continue;
+                        }
                         let id = self.terminal_id(items);
                         Symbol::Terminal(Terminal::Bytes(id))
                     },
@@ -269,6 +272,10 @@ impl TranslatorGrammar {
     
     pub fn numbersets(&self) -> &HashMap<usize, Numberset> {
         &self.numbersets
+    }
+    
+    pub fn numberset(&self, id: usize) -> &Numberset {
+        self.numbersets.get(&id).unwrap()
     }
     
     pub fn nonterminal(&self, id: usize) -> &str {
