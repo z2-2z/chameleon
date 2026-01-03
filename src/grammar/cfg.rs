@@ -108,13 +108,14 @@ impl ContextFreeGrammar {
         }
     }
     
-    pub(super) fn remove_unused_rules(&mut self) {
+    pub(super) fn remove_unused_rules(&mut self, log: bool) {
         /* Build graph */
         let mut graph = DiGraph::<&str, ()>::new();
         let mut nodes = HashMap::new();
+        let mut unused_nonterms = HashSet::new();
         
         for rule in &self.rules {
-            self.unused_nonterms.insert(rule.lhs.name().to_owned());
+            unused_nonterms.insert(rule.lhs.name().to_owned());
             
             for symbol in &rule.rhs {
                 if let Symbol::NonTerminal(nonterm) = symbol {
@@ -132,18 +133,22 @@ impl ContextFreeGrammar {
         let mut bfs = Bfs::new(&graph, *entry);
         
         while let Some(node) = bfs.next(&graph) {
-            self.unused_nonterms.remove(graph[node]);
+            unused_nonterms.remove(graph[node]);
         }
         
         /* Remove unused rules */
         let mut i = 0;
         
         while i < self.rules.len() {
-            if self.unused_nonterms.contains(self.rules[i].lhs.name()) {
+            if unused_nonterms.contains(self.rules[i].lhs.name()) {
                 self.rules.remove(i);
             } else {
                 i += 1;
             }
+        }
+        
+        if log {
+            self.unused_nonterms.extend(unused_nonterms);
         }
     }
     

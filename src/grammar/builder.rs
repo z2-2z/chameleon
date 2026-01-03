@@ -93,7 +93,7 @@ impl GrammarBuilder {
             NonTerminal(self.entrypoint),
             rules,
         );
-        cfg.remove_unused_rules();
+        cfg.remove_unused_rules(true);
         cfg.remove_duplicate_rules();
         
         #[cfg(debug_assertions)]
@@ -102,6 +102,7 @@ impl GrammarBuilder {
         cfg.expand_unit_rules();
         cfg.prepare_gnf();
         cfg.convert_to_gnf();
+        cfg.remove_unused_rules(false);
         
         #[cfg(debug_assertions)]
         println!("Grammar size went from {} -> {}", prev_size, cfg.grammar_size());

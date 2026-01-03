@@ -40,9 +40,9 @@ typedef struct {
 
 /***** PRNG *****/
 
-static THREAD_LOCAL size_t rand_state = STATIC_SEED;
+static THREAD_LOCAL size_t rand_state = CHAMELEON_SEED;
 
-static inline size_t random (void) {
+static inline size_t internal_random (void) {
     size_t x = rand_state;
     x ^= x << 13;
     x ^= x >> 7;
@@ -70,13 +70,13 @@ static size_t _mutate_nonterm_{{ id }} (unsigned int*, const size_t, const size_
 
 {% for (id, numberset) in grammar.numbersets() %}
 static void _mutate_numberset_{{ id }} (unsigned char* output) {
-    size_t idx = random() % {{ numberset.set().len() }};
+    size_t idx = internal_random() % {{ numberset.set().len() }};
     uint64_t value;
     
     switch (idx) {
         {%- for (i, range) in numberset.set().iter().enumerate() %}
         case {{ i }}: {
-            value = {{ range.start() }}ULL + (random() % ({{ range.end() }}ULL - {{ range.start() }}ULL + 1));
+            value = {{ range.start() }}ULL + (internal_random() % ({{ range.end() }}ULL - {{ range.start() }}ULL + 1));
             break;
         }
         {%- endfor %}
@@ -91,7 +91,12 @@ static void _mutate_numberset_{{ id }} (unsigned char* output) {
 {% for set in grammar.rules() %}
 // This is the mutation function for non-terminal '{{ grammar.nonterminal(set.nonterm().id()) }}'
 static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+    {%- if set.has_no_symbols() %}
+    (void) output_length;
+    {%- endif %}
+    {%- if set.has_nonterms() %}
     size_t r;
+    {%- endif %}
     unsigned int mutate, rule;
     unsigned char* original_output = output;
     size_t s = *step;
@@ -104,7 +109,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
     mutate = (s >= length);
     
     if (mutate) {
-        rule = random() % {{ set.rules().len() }};
+        rule = internal_random() % {{ set.rules().len() }};
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -185,7 +190,7 @@ EXPORT_FUNCTION
 size_t chameleon_mutate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
     size_t length = 0;
     if (LIKELY(walk->length > 0)) {
-        length = random() % walk->length;
+        length = internal_random() % walk->length;
     }
     walk->length = 0;
     return _mutate_nonterm_{{ grammar.entrypoint().id() }}(walk->steps, length, walk->capacity, &walk->length, output, output_length);

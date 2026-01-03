@@ -60,27 +60,20 @@ fn check(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
 
 fn translate(entrypoint: Option<String>, output: String, grammars: Vec<String>) -> Result<()> {
     let mut builder = grammar::ContextFreeGrammar::builder();
-    
     if let Some(entrypoint) = entrypoint {
         builder.set_entrypoint(entrypoint);
     }
-    
     for grammar in grammars {
         builder.load_grammar(&grammar)?;
     }
-    
     let cfg = builder.build()?;
     
     if !cfg.unused_nonterms().is_empty() {
         println!("WARNING: The following non-terminals are unreachable when using entrypoint '{}': {:?}", cfg.entrypoint().name(), cfg.unused_nonterms());
     }
-    
     let cfg = translator::TranslatorGrammar::converter().convert(&cfg);
     
-    println!("{:#?}", cfg);
-    
     let result = translator::templates::render(cfg);
-    
     std::fs::write(output, result)?;
     
     Ok(())

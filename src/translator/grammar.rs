@@ -120,6 +120,30 @@ impl RuleSet {
     pub fn rules(&self) -> &[Vec<Symbol>] {
         &self.rules
     }
+    
+    pub fn has_nonterms(&self) -> bool {
+        for rule in &self.rules {
+            for symbol in rule {
+                if matches!(symbol, Symbol::NonTerminal(_)) {
+                    return true;
+                }
+            }
+        }
+        
+        false
+    }
+    
+    pub fn has_no_symbols(&self) -> bool {
+        for rule in &self.rules {
+            for symbol in rule {
+                if matches!(symbol, Symbol::NonTerminal(_)) {
+                    return false;
+                }
+            }
+        }
+        
+        true
+    }
 }
 
 #[inline]
