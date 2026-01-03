@@ -286,10 +286,6 @@ impl TranslatorGrammar {
         &self.nonterminals
     }
     
-    pub fn terminal(&self, id: usize) -> &[u8] {
-        self.terminals.get(&id).unwrap()
-    }
-    
     pub fn terminals(&self) -> &HashMap<usize, Vec<u8>> {
         &self.terminals
     }

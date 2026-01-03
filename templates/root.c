@@ -91,14 +91,15 @@ static void _mutate_numberset_{{ id }} (unsigned char* output) {
 {% for set in grammar.rules() %}
 // This is the mutation function for non-terminal '{{ grammar.nonterminal(set.nonterm().id()) }}'
 static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
-    int hit_limit = 0; size_t r;
+    size_t r;
     unsigned int mutate, rule;
-    size_t s = (*step)++;
     unsigned char* original_output = output;
+    size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
         return 0;
     }
+    *step = s + 1;
     
     mutate = (s >= length);
     
@@ -120,7 +121,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
             {%- let numberset = grammar.numberset(**id) %}
             if (mutate) {
                 if (UNLIKELY(sizeof({{ numberset.typ().c_type() }}) > output_length)) {
-                    return 0;
+                    return output_length;
                 }
                 _mutate_numberset_{{ id }}(output);
             }
@@ -129,7 +130,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
             {%- when crate::translator::Terminal::Bytes(id) %}
             if (mutate) {
                 if (UNLIKELY(sizeof(TERMINAL_{{ id }}) > output_length)) {
-                    return 0;
+                    return output_length;
                 }
                 __builtin_memcpy(output, TERMINAL_{{ id }}, sizeof(TERMINAL_{{ id }}));
             }
@@ -140,14 +141,8 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
             r = _mutate_nonterm_{{ nonterm.id() }}(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
-            hit_limit |= !r;
             {%- endmatch %}
             {%- endfor %}
-            
-            if (UNLIKELY(hit_limit)) {
-                return 0;
-            }
-            
             break;
         }
         {% endfor %}

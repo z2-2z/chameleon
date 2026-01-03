@@ -33,6 +33,10 @@ enum Commands {
         #[arg(long)]
         entrypoint: Option<String>,
         
+        /// Name of resulting output file
+        #[arg(long)]
+        output: String,
+        
         /// Paths to grammar files
         grammars: Vec<String>,
     },
@@ -54,7 +58,7 @@ fn check(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-fn translate(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
+fn translate(entrypoint: Option<String>, output: String, grammars: Vec<String>) -> Result<()> {
     let mut builder = grammar::ContextFreeGrammar::builder();
     
     if let Some(entrypoint) = entrypoint {
@@ -77,7 +81,7 @@ fn translate(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
     
     let result = translator::templates::render(cfg);
     
-    println!("{result}");
+    std::fs::write(output, result)?;
     
     Ok(())
 }
@@ -87,6 +91,6 @@ fn main() -> Result<()> {
     
     match args.command {
         Commands::Check { entrypoint, grammars } => check(entrypoint, grammars),
-        Commands::Translate { entrypoint, grammars } => translate(entrypoint, grammars),
+        Commands::Translate { entrypoint, output, grammars } => translate(entrypoint, output, grammars),
     }
 }

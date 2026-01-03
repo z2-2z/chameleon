@@ -66,14 +66,15 @@ static size_t _mutate_nonterm_Y (unsigned int* steps, const size_t length, const
 
 // Multiple production rules
 static size_t _mutate_nonterm_X (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
-    int hit_limit = 0; size_t r;
+    size_t r;
     unsigned int mutate, rule;
-    size_t s = (*step)++;
     unsigned char* original_output = output;
+    size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
         return 0;
     }
+    *step = s + 1;
     
     mutate = (s >= length);
     
@@ -89,7 +90,7 @@ static size_t _mutate_nonterm_X (unsigned int* steps, const size_t length, const
             /* Terminals */
             if (mutate) { //TODO: does this increase performance ?
                 if (UNLIKELY(sizeof(TERMINAL) > output_length)) {
-                    return 0;
+                    return output_length;
                 }
                 __builtin_memcpy(output, TERMINAL, sizeof(TERMINAL));
             }
@@ -100,11 +101,6 @@ static size_t _mutate_nonterm_X (unsigned int* steps, const size_t length, const
             r = _mutate_nonterm_Y(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
-            hit_limit |= !r;
-            
-            if (UNLIKELY(hit_limit)) {
-                return 0;
-            }
             
             break;
         }
