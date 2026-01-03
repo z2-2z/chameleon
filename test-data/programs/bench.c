@@ -7,8 +7,8 @@
 #define OUTPUT_LENGTH (4*4096)
 
 /*
-Generator: 84 705416858 ~126 MiB/s
-Mutator: 69 531055780 ~155 MiB/s
+Generator: 83 772963935 ~128 MiB/s
+Mutator: 66 711509539 ~160 MiB/s
 */
 
 struct timespec diff_timespec(struct timespec *time1,
@@ -33,7 +33,7 @@ int main (void) {
     
     clock_gettime(CLOCK_MONOTONIC, &start);
     while (total < 10UL * 1024 * 1024 * 1024) {
-        total += chameleon_mutate(walk, output, OUTPUT_LENGTH);
+        total += chameleon_generate(walk, output, OUTPUT_LENGTH);
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
     
