@@ -37,19 +37,6 @@ impl NumbersetType {
             NumbersetType::I64 => "int64_t",
         }
     }
-    
-    pub fn c_suffix(&self) -> &str {
-        match self {
-            NumbersetType::U8 => "U",
-            NumbersetType::I8 => "",
-            NumbersetType::U16 => "U",
-            NumbersetType::I16 => "",
-            NumbersetType::U32 => "U",
-            NumbersetType::I32 => "",
-            NumbersetType::U64 => "ULL",
-            NumbersetType::I64 => "LL",
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -278,10 +265,6 @@ impl TranslatorGrammar {
     
     pub fn rules(&self) -> &[RuleSet] {
         &self.rules
-    }
-    
-    pub fn numberset(&self, id: usize) -> &Numberset {
-        self.numbersets.get(&id).unwrap()
     }
     
     pub fn numbersets(&self) -> &HashMap<usize, Numberset> {

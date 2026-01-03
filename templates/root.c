@@ -67,9 +67,6 @@ static const unsigned char TERMINAL_{{ id }}[{{ content.len() }}] = {
 {% for (id, _) in grammar.nonterminals() %}
 static size_t _mutate_nonterm_{{ id }} (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
 {%- endfor %}
-{% for (id, _) in grammar.numbersets() %}
-static void _mutate_numberset_{{ id }} (unsigned char*);
-{%- endfor %}
 
 #ifndef OMIT_CHAMELEON_SEED
 EXPORT_FUNCTION
@@ -116,6 +113,27 @@ size_t chameleon_generate (ChameleonWalk* walk, unsigned char* output, size_t ou
 #endif /* OMIT_CHAMELEON_GENERATE */
 
 #if !defined(OMIT_CHAMELEON_MUTATE) || !defined(OMIT_CHAMELEON_GENERATE)
+{% for (id, numberset) in grammar.numbersets() %}
+static void _mutate_numberset_{{ id }} (unsigned char* output) {
+    size_t idx = random() % {{ numberset.set().len() }};
+    uint64_t value;
+    
+    switch (idx) {
+        {%- for (i, range) in numberset.set().iter().enumerate() %}
+        case {{ i }}: {
+            value = {{ range.start() }}ULL + (random() % ({{ range.end() }}ULL - {{ range.start() }}ULL + 1));
+            break;
+        }
+        {%- endfor %}
+        default: {
+            __builtin_unreachable();
+        }
+    }
+    
+    __builtin_memcpy(output, (unsigned char*) &value, sizeof({{ numberset.typ().c_type() }}));
+}
+{%- endfor %}
+
 {% for set in grammar.rules() %}
 // This is the mutation function for non-terminal '{{ grammar.nonterminal(set.nonterm().id()) }}'
 static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
@@ -159,16 +177,4 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
     return (size_t) (output - original_output);
 }
 {% endfor %}
-
-{% for (id, numberset) in grammar.numbersets() %}
-static void _mutate_numberset_{{ id }} (unsigned char* output) {
-    size_t idx = random() % {{ numberset.set().len() }};
-    {{ numberset.typ().c_type() }} value;
-    
-    switch (idx) {
-        
-    }
-}
-{%- endfor %}
-
 #endif
