@@ -94,18 +94,21 @@ impl GrammarBuilder {
             rules,
         );
         cfg.remove_unused_rules(true);
-        cfg.remove_duplicate_rules();
         
-        #[cfg(debug_assertions)]
-        let prev_size = cfg.grammar_size();
-        
-        cfg.expand_unit_rules();
-        cfg.prepare_gnf();
-        cfg.convert_to_gnf();
-        cfg.remove_unused_rules(false);
-        
-        if verbose {
-            println!("Grammar size went from {} -> {} symbols", prev_size, cfg.grammar_size());
+        if !cfg.is_in_gnf() {
+            let prev_size = cfg.grammar_size();
+            
+            cfg.remove_duplicate_rules();
+            cfg.expand_unit_rules();
+            cfg.prepare_gnf();
+            cfg.convert_to_gnf();
+            cfg.remove_unused_rules(false);
+            
+            if verbose {
+                println!("Grammar size went from {} -> {} symbols", prev_size, cfg.grammar_size());
+            }
+        } else if verbose {
+            println!("Grammar already in GNF");
         }
         
         Ok(cfg)

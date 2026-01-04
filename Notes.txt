@@ -34,3 +34,4 @@ Interface:
 TODO:
 - fuzz subcommand
 - chameleon_parse()
+- fuzzing

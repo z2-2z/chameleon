@@ -46,7 +46,7 @@ pub struct ProductionRule {
 
 impl ProductionRule {
     fn is_left_recursive(&self) -> bool {
-        if let Symbol::NonTerminal(nonterm) = &self.rhs[0] && &self.lhs == nonterm {
+        if let Some(Symbol::NonTerminal(nonterm)) = self.rhs.first() && &self.lhs == nonterm {
             true
         } else {
             false
@@ -291,8 +291,7 @@ impl ContextFreeGrammar {
             break;
         }
         
-        #[cfg(debug_assertions)]
-        self.verify();
+        assert!(self.is_in_gnf());
     }
     
     fn expand_rule(&mut self, rule: ProductionRule) {
@@ -311,14 +310,19 @@ impl ContextFreeGrammar {
         }
     }
     
-    #[cfg(debug_assertions)]
-    fn verify(&self) {
+    pub(super) fn is_in_gnf(&self) -> bool {
         for rule in &self.rules {
-            assert!(matches!(rule.rhs[0], Symbol::Terminal(_)));
+            if !matches!(rule.rhs[0], Symbol::Terminal(_)) {
+                return false;
+            }
             
             for symbol in &rule.rhs[1..] {
-                assert!(matches!(symbol, Symbol::NonTerminal(_)));
+                if !matches!(symbol, Symbol::NonTerminal(_)) {
+                    return false;
+                }
             }
         }
+        
+        true
     }
 }
