@@ -38,7 +38,7 @@ namespace json
     "r" ||
     "t" 
 )
-/* Technically, \uXXXX are part of the json spec but randomly generating
+/* Technically, \uXXXX is part of the json spec but randomly generating
    hex digits will create invalid unicode strings so we leave it out...
     
     || "u" <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT>
