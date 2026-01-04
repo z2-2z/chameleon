@@ -1,5 +1,9 @@
 use crate::translator::TranslatorGrammar;
 use askama::Template;
+use anyhow::Result;
+use std::path::PathBuf;
+
+const DEFAULT_PREFIX: &str = "chameleon";
 
 #[derive(askama::Template)]
 #[template(path = "mutations.c", escape = "none")]
@@ -19,9 +23,22 @@ struct Root<'a> {
     grammar: &'a TranslatorGrammar,
     numbersets: Numbersets<'a>,
     mutations: Mutations<'a>,
+    prefix: &'a str,
 }
 
-pub fn render(grammar: TranslatorGrammar) -> String {
+#[derive(askama::Template)]
+#[template(path = "header.h", escape = "none")]
+struct Header<'a> {
+    prefix: &'a str,
+}
+
+pub fn render<P: Into<PathBuf>>(grammar: TranslatorGrammar, arg_prefix: Option<String>, output: P) -> Result<()> {
+    let mut output = output.into();
+    let prefix = if let Some(p) = arg_prefix.as_ref() {
+        p
+    } else {
+        DEFAULT_PREFIX
+    };
     let numbersets = Numbersets {
         grammar: &grammar,
     };
@@ -32,6 +49,21 @@ pub fn render(grammar: TranslatorGrammar) -> String {
         grammar: &grammar,
         numbersets,
         mutations,
+        prefix,
     };
-    root.render().unwrap()
+    let source = root.render()?;
+    
+    std::fs::write(&output, source)?;
+    
+    if arg_prefix.is_some() {
+        let header = Header {
+            prefix,
+        };
+        let source = header.render()?;
+        
+        output.set_extension("h");
+        std::fs::write(&output, source)?;
+    }
+    
+    Ok(())
 }

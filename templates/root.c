@@ -121,14 +121,14 @@ static size_t _mutate_nonterm_{{ id }} (unsigned int*, const size_t, const size_
 
 #ifndef OMIT_CHAMELEON_SEED
 EXPORT_FUNCTION
-void chameleon_seed (size_t new_seed) {
+void {{ prefix }}_seed (size_t new_seed) {
     rand_state = new_seed;
 }
 #endif /* OMIT_CHAMELEON_SEED */
 
 #ifndef OMIT_CHAMELEON_INIT
 EXPORT_FUNCTION
-void chameleon_init (ChameleonWalk* walk, size_t capacity) {
+void {{ prefix }}_init (ChameleonWalk* walk, size_t capacity) {
     walk->steps = malloc(capacity * sizeof(unsigned int));
     walk->length = 0;
     walk->capacity = capacity;
@@ -137,7 +137,7 @@ void chameleon_init (ChameleonWalk* walk, size_t capacity) {
 
 #ifndef OMIT_CHAMELEON_DESTROY
 EXPORT_FUNCTION
-void chameleon_destroy (ChameleonWalk* walk) {
+void {{ prefix }}_destroy (ChameleonWalk* walk) {
     free(walk->steps);
     __builtin_memset(walk, 0, sizeof(ChameleonWalk));
 }
@@ -145,7 +145,7 @@ void chameleon_destroy (ChameleonWalk* walk) {
 
 #ifndef OMIT_CHAMELEON_MUTATE
 EXPORT_FUNCTION
-size_t chameleon_mutate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
+size_t {{ prefix }}_mutate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
     size_t length = 0;
     if (LIKELY(walk->length > 0)) {
         length = weighted_random(walk->length);
@@ -157,7 +157,7 @@ size_t chameleon_mutate (ChameleonWalk* walk, unsigned char* output, size_t outp
 
 #ifndef OMIT_CHAMELEON_GENERATE
 EXPORT_FUNCTION
-size_t chameleon_generate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
+size_t {{ prefix }}_generate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
     walk->length = 0;
     return _mutate_nonterm_{{ grammar.entrypoint().id() }}(walk->steps, 0, walk->capacity, &walk->length, output, output_length);
 }

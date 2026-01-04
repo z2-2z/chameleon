@@ -33,6 +33,10 @@ enum Commands {
         #[arg(long)]
         entrypoint: Option<String>,
         
+        /// Sets a prefix for the generated function names
+        #[arg(long)]
+        prefix: Option<String>,
+        
         /// Name of resulting output file
         #[arg(long)]
         output: String,
@@ -58,7 +62,7 @@ fn check(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-fn translate(entrypoint: Option<String>, output: String, grammars: Vec<String>) -> Result<()> {
+fn translate(entrypoint: Option<String>, prefix: Option<String>, output: String, grammars: Vec<String>) -> Result<()> {
     let mut builder = grammar::ContextFreeGrammar::builder();
     if let Some(entrypoint) = entrypoint {
         builder.set_entrypoint(entrypoint);
@@ -73,8 +77,7 @@ fn translate(entrypoint: Option<String>, output: String, grammars: Vec<String>) 
     }
     let cfg = translator::TranslatorGrammar::converter().convert(&cfg);
     
-    let result = translator::templates::render(cfg);
-    std::fs::write(output, result)?;
+    translator::templates::render(cfg, prefix, output)?;
     
     Ok(())
 }
@@ -84,6 +87,6 @@ fn main() -> Result<()> {
     
     match args.command {
         Commands::Check { entrypoint, grammars } => check(entrypoint, grammars),
-        Commands::Translate { entrypoint, output, grammars } => translate(entrypoint, output, grammars),
+        Commands::Translate { entrypoint, prefix, output, grammars } => translate(entrypoint, prefix, output, grammars),
     }
 }
