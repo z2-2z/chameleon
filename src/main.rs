@@ -17,31 +17,36 @@ struct Args {
 
 #[derive(clap::Subcommand)]
 enum Commands {
-    /// Verifies that a grammar file is syntactically valid
+    /// Verifies that a grammar file is valid
     Check {
-        /// Sets the non-terminal entrypoint for the grammar
-        #[arg(long)]
+        /// Sets the entrypoint for the grammar
+        #[arg(short, long)]
         entrypoint: Option<String>,
         
-        /// Paths to grammar files
+        /// Paths to .chm grammar files
+        #[arg(required = true)]
         grammars: Vec<String>,
     },
     
-    /// Take one or more grammars and emit mutation and generation code
+    /// Take one or more grammars and emit code
     Translate {
-        /// Sets the non-terminal entrypoint for the grammar
-        #[arg(long)]
+        /// Sets the entrypoint for the grammar
+        #[arg(short, long)]
         entrypoint: Option<String>,
         
+        #[arg(short, long)]
+        verbose: bool,
+        
         /// Sets a prefix for the generated function names
-        #[arg(long)]
+        #[arg(short, long)]
         prefix: Option<String>,
         
-        /// Name of resulting output file
-        #[arg(long)]
+        /// Name of resulting .c file
+        #[arg(short, long)]
         output: String,
         
-        /// Paths to grammar files
+        /// Paths to .chm grammar files
+        #[arg(required = true)]
         grammars: Vec<String>,
     },
 }
@@ -62,7 +67,7 @@ fn check(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-fn translate(entrypoint: Option<String>, prefix: Option<String>, output: String, grammars: Vec<String>) -> Result<()> {
+fn translate(entrypoint: Option<String>, verbose: bool, prefix: Option<String>, output: String, grammars: Vec<String>) -> Result<()> {
     let mut builder = grammar::ContextFreeGrammar::builder();
     if let Some(entrypoint) = entrypoint {
         builder.set_entrypoint(entrypoint);
@@ -70,9 +75,9 @@ fn translate(entrypoint: Option<String>, prefix: Option<String>, output: String,
     for grammar in grammars {
         builder.load_grammar(&grammar)?;
     }
-    let cfg = builder.build()?;
+    let cfg = builder.build(verbose)?;
     
-    if !cfg.unused_nonterms().is_empty() {
+    if verbose && !cfg.unused_nonterms().is_empty() {
         println!("WARNING: The following non-terminals are unreachable when using entrypoint '{}': {:?}", cfg.entrypoint().name(), cfg.unused_nonterms());
     }
     let cfg = translator::TranslatorGrammar::converter().convert(&cfg);
@@ -87,6 +92,6 @@ fn main() -> Result<()> {
     
     match args.command {
         Commands::Check { entrypoint, grammars } => check(entrypoint, grammars),
-        Commands::Translate { entrypoint, prefix, output, grammars } => translate(entrypoint, prefix, output, grammars),
+        Commands::Translate { entrypoint, verbose, prefix, output, grammars } => translate(entrypoint, verbose, prefix, output, grammars),
     }
 }

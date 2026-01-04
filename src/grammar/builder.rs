@@ -63,7 +63,7 @@ impl GrammarBuilder {
         Ok(())
     }
     
-    pub fn build(mut self) -> Result<ContextFreeGrammar> {
+    pub fn build(mut self, verbose: bool) -> Result<ContextFreeGrammar> {
         self.check()?;
         
         let mut post = TokenPostProcessor::new();
@@ -104,8 +104,9 @@ impl GrammarBuilder {
         cfg.convert_to_gnf();
         cfg.remove_unused_rules(false);
         
-        #[cfg(debug_assertions)]
-        println!("Grammar size went from {} -> {}", prev_size, cfg.grammar_size());
+        if verbose {
+            println!("Grammar size went from {} -> {} symbols", prev_size, cfg.grammar_size());
+        }
         
         Ok(cfg)
     }

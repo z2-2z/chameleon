@@ -31,3 +31,6 @@ Interface:
 2. Rust types to interface with C code
 3. LibAFL components that use rust types
 
+TODO:
+- fuzz subcommand
+- chameleon_parse()
