@@ -2,7 +2,7 @@
 //
 // How to use:
 //
-// 1) You can either compile this code into a shared object that
+// 1) You can either compile this code into a shared object
 //    that can be loaded by Chameleon's LibAFL components:
 //    $ gcc -O3 -flto -march=native -fno-stack-protector -fomit-frame-pointer -fvisibility=hidden -DCHAMELEON_VISIBLE -fPIC -shared -o generator.so <source file>
 //
