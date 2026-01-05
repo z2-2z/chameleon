@@ -54,7 +54,7 @@ impl Chameleon {
         }
     }
     
-    pub fn mutate(&mut self, walk: &mut Vec<u32>, output: &mut Vec<u8>) {
+    pub fn mutate(&mut self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
         let mut c = ChameleonWalk {
             steps: walk.as_mut_ptr(),
             length: walk.len(),
@@ -70,10 +70,12 @@ impl Chameleon {
             
             walk.set_len(c.length);
             output.set_len(new_len);
+            
+            new_len < output.capacity()
         }
     }
     
-    pub fn generate(&mut self, walk: &mut Vec<u32>, output: &mut Vec<u8>) {
+    pub fn generate(&mut self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
         let mut c = ChameleonWalk {
             steps: walk.as_mut_ptr(),
             length: walk.len(),
@@ -89,6 +91,8 @@ impl Chameleon {
             
             walk.set_len(c.length);
             output.set_len(new_len);
+            
+            new_len < output.capacity()
         }
     }
 }
