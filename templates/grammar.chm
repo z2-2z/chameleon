@@ -1,0 +1,3 @@
+/*
+Entrypoint is <{{ cfg.entrypoint().name() }}>
+*/

@@ -3,8 +3,6 @@ use askama::Template;
 use anyhow::Result;
 use std::path::PathBuf;
 
-const DEFAULT_PREFIX: &str = "chameleon";
-
 #[derive(askama::Template)]
 #[template(path = "mutations.c", escape = "none")]
 struct Mutations<'a> {
@@ -37,7 +35,7 @@ pub fn render<P: Into<PathBuf>>(grammar: TranslatorGrammar, arg_prefix: Option<S
     let prefix = if let Some(p) = arg_prefix.as_ref() {
         p
     } else {
-        DEFAULT_PREFIX
+        chameleon::DEFAULT_PREFIX
     };
     let numbersets = Numbersets {
         grammar: &grammar,

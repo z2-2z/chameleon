@@ -4,6 +4,7 @@ use mimalloc::MiMalloc;
 
 mod grammar;
 mod translator;
+mod beautifier;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -49,6 +50,21 @@ enum Commands {
         #[arg(required = true)]
         grammars: Vec<String>,
     },
+    
+    /// Merge multiple grammar files into one
+    Join {
+        /// Sets the entrypoint for the grammar
+        #[arg(short, long)]
+        entrypoint: Option<String>,
+        
+        /// Name of resulting .chm file
+        #[arg(short, long)]
+        output: String,
+        
+        /// Paths to .chm grammar files
+        #[arg(required = true)]
+        grammars: Vec<String>,
+    },
 }
 
 fn check(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
@@ -87,11 +103,27 @@ fn translate(entrypoint: Option<String>, verbose: bool, prefix: Option<String>, 
     Ok(())
 }
 
+fn join(entrypoint: Option<String>, output: String, grammars: Vec<String>) -> Result<()> {
+    let mut builder = grammar::ContextFreeGrammar::builder();
+    if let Some(entrypoint) = entrypoint {
+        builder.set_entrypoint(entrypoint);
+    }
+    for grammar in grammars {
+        builder.load_grammar(&grammar)?;
+    }
+    let cfg = builder.build(true)?;
+    
+    beautifier::beautify(cfg, output)?;
+    
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     
     match args.command {
         Commands::Check { entrypoint, grammars } => check(entrypoint, grammars),
         Commands::Translate { entrypoint, verbose, prefix, output, grammars } => translate(entrypoint, verbose, prefix, output, grammars),
+        Commands::Join { entrypoint, output, grammars } => join(entrypoint, output, grammars),
     }
 }
