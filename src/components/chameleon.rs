@@ -57,12 +57,16 @@ impl Chameleon {
     }
     
     pub fn seed(&self, seed: usize) {
+        assert_ne!(self.seed as usize, 0);
+        
         unsafe {
             (self.seed)(seed);
         }
     }
     
-    pub fn mutate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
+    pub(crate) fn mutate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
+        assert_ne!(self.mutate as usize, 0);
+        
         let mut c = ChameleonWalk {
             steps: walk.as_mut_ptr(),
             length: walk.len(),
@@ -83,7 +87,9 @@ impl Chameleon {
         }
     }
     
-    pub fn generate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
+    pub(crate) fn generate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
+        assert_ne!(self.generate as usize, 0);
+        
         let mut c = ChameleonWalk {
             steps: walk.as_mut_ptr(),
             length: 0,

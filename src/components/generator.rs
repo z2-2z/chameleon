@@ -16,7 +16,13 @@ impl ChameleonGenerator {
 impl<S> Generator<ChameleonInput, S> for ChameleonGenerator {
     fn generate(&mut self, _state: &mut S) -> Result<ChameleonInput, Error> {
         let mut input = ChameleonInput::default();
-        self.chameleon.generate(&mut input.walk, &mut input.bytes);
+        
+        loop {
+            if self.chameleon.generate(&mut input.walk, &mut input.bytes) {
+                break;
+            }
+        }
+        
         Ok(input)
     }
 }
