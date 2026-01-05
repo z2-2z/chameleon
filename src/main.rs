@@ -1,6 +1,8 @@
 use clap::Parser;
 use anyhow::Result;
 use mimalloc::MiMalloc;
+use libafl::prelude::{Input, HasTargetBytes};
+use std::io::Write;
 
 mod grammar;
 mod translator;
@@ -65,6 +67,12 @@ enum Commands {
         #[arg(required = true)]
         grammars: Vec<String>,
     },
+    
+    /// Given a .bin file, print the corresponding generator output to stdout
+    Print {
+        /// Path to a .bin file
+        input: String,
+    }
 }
 
 fn check(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
@@ -118,6 +126,13 @@ fn join(entrypoint: Option<String>, output: String, grammars: Vec<String>) -> Re
     Ok(())
 }
 
+fn print(input: String) -> Result<()> {
+    let input = chameleon::ChameleonInput::from_file(input)?;
+    let bytes = input.target_bytes();
+    std::io::stdout().write_all(&bytes)?;
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     
@@ -125,5 +140,6 @@ fn main() -> Result<()> {
         Commands::Check { entrypoint, grammars } => check(entrypoint, grammars),
         Commands::Translate { entrypoint, verbose, prefix, output, grammars } => translate(entrypoint, verbose, prefix, output, grammars),
         Commands::Join { entrypoint, output, grammars } => join(entrypoint, output, grammars),
+        Commands::Print { input } => print(input),
     }
 }
