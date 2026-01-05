@@ -16,7 +16,15 @@ type FunctionMutate = unsafe extern "C" fn(*mut ChameleonWalk, *mut u8, usize) -
 type FunctionGenerate = unsafe extern "C" fn(*mut ChameleonWalk, *mut u8, usize) -> usize;
 
 fn get_fn<T: Copy>(lib: &libloading::Library, name: String) -> Result<T> {
-    let f: libloading::Symbol<T> = unsafe { lib.get(name) }?;
+    let f: libloading::Symbol<T> = unsafe {
+        match lib.get(name) {
+            Err(libloading::Error::DlSym { .. }) => {
+                #[allow(clippy::missing_transmute_annotations)]
+                Ok(std::mem::transmute(std::ptr::null::<()>()))
+            },
+            v => v,
+        }
+    }?;
     Ok(*f.deref())
 }
 
@@ -48,13 +56,13 @@ impl Chameleon {
         })
     }
     
-    pub fn seed(&mut self, seed: usize) {
+    pub fn seed(&self, seed: usize) {
         unsafe {
             (self.seed)(seed);
         }
     }
     
-    pub fn mutate(&mut self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
+    pub fn mutate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
         let mut c = ChameleonWalk {
             steps: walk.as_mut_ptr(),
             length: walk.len(),
@@ -75,7 +83,7 @@ impl Chameleon {
         }
     }
     
-    pub fn generate(&mut self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
+    pub fn generate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
         let mut c = ChameleonWalk {
             steps: walk.as_mut_ptr(),
             length: 0,

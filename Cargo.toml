@@ -17,3 +17,6 @@ petgraph = "0.8"
 nohash = "0.2"
 askama = "0.15"
 libloading = "0.9"
+serde = "1.0"
+libafl = { version = "0.15.3", features = ["prelude"] }
+libafl_bolts = "0.15.3"
