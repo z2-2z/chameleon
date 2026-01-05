@@ -78,7 +78,7 @@ impl Chameleon {
     pub fn generate(&mut self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
         let mut c = ChameleonWalk {
             steps: walk.as_mut_ptr(),
-            length: walk.len(),
+            length: 0,
             capacity: walk.capacity(),
         };
         
