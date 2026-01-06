@@ -3,7 +3,7 @@
 Re-implementation of [Gramatron](https://github.com/HexHive/Gramatron) with an emphasis on performance and ease-of-use.
 
 Chameleon builds on the theoretical foundations of Gramatron. It converts a context-free grammar into
-a push-down automaton and uses this to generate/mutate inputs. However, while other Gramatron-based tools
+a push-down automaton and uses it to generate/mutate inputs. However, while other Gramatron-based tools
 realize the PDA as data (e.g. in form of a matrix), this tool translates the production rules of a grammar
 into code and produces a mutation and generation procedure in C. This achieves >= 3x more performance.
 
