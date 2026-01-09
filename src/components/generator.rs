@@ -1,4 +1,4 @@
-use crate::{Chameleon, ChameleonInput};
+use crate::{Chameleon, ChameleonInput, BabyChameleon};
 use libafl::prelude::{Generator, Error};
 
 pub struct ChameleonGenerator {
@@ -19,6 +19,32 @@ impl<S> Generator<ChameleonInput, S> for ChameleonGenerator {
         
         loop {
             if self.chameleon.generate(&mut input.walk, &mut input.bytes) {
+                break;
+            }
+        }
+        
+        Ok(input)
+    }
+}
+
+pub struct BabyChameleonGenerator {
+    chameleon: BabyChameleon,
+}
+
+impl BabyChameleonGenerator {
+    pub fn new(chameleon: BabyChameleon) -> Self {
+        Self {
+            chameleon,
+        }
+    }
+}
+
+impl<S> Generator<ChameleonInput, S> for BabyChameleonGenerator {
+    fn generate(&mut self, _state: &mut S) -> Result<ChameleonInput, Error> {
+        let mut input = ChameleonInput::default();
+        
+        loop {
+            if self.chameleon.generate(&mut input.bytes) {
                 break;
             }
         }
