@@ -4,7 +4,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 #[derive(askama::Template)]
-#[template(path = "mutations.c", escape = "none")]
+#[template(path = "full/mutations.c", escape = "none")]
 struct Mutations<'a> {
     grammar: &'a TranslatorGrammar,
 }
@@ -16,7 +16,7 @@ struct Numbersets<'a> {
 }
 
 #[derive(askama::Template)]
-#[template(path = "root.c", escape = "none")]
+#[template(path = "full/root.c", escape = "none")]
 struct Root<'a> {
     grammar: &'a TranslatorGrammar,
     numbersets: Numbersets<'a>,
@@ -25,7 +25,7 @@ struct Root<'a> {
 }
 
 #[derive(askama::Template)]
-#[template(path = "header.h", escape = "none")]
+#[template(path = "full/header.h", escape = "none")]
 struct Header<'a> {
     prefix: &'a str,
 }

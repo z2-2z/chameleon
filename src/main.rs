@@ -37,8 +37,14 @@ enum Commands {
         #[arg(short, long)]
         entrypoint: Option<String>,
         
+        /// Enable verbose logging
         #[arg(short, long)]
         verbose: bool,
+        
+        /// Enable "baby" mode to output just a simple generator and not a full
+        /// mutation procedure
+        #[arg(short, long)]
+        baby: bool,
         
         /// Sets a prefix for the generated function names
         #[arg(short, long)]
@@ -91,7 +97,7 @@ fn check(entrypoint: Option<String>, grammars: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-fn translate(entrypoint: Option<String>, verbose: bool, prefix: Option<String>, output: String, grammars: Vec<String>) -> Result<()> {
+fn translate(entrypoint: Option<String>, verbose: bool, baby: bool, prefix: Option<String>, output: String, grammars: Vec<String>) -> Result<()> {
     let mut builder = grammar::ContextFreeGrammar::builder();
     if let Some(entrypoint) = entrypoint {
         builder.set_entrypoint(entrypoint);
@@ -106,7 +112,11 @@ fn translate(entrypoint: Option<String>, verbose: bool, prefix: Option<String>, 
     }
     let cfg = translator::TranslatorGrammar::converter().convert(&cfg);
     
-    translator::templates::render(cfg, prefix, output)?;
+    if baby {
+        translator::baby::render(cfg, prefix, output)?;
+    } else {
+        translator::full::render(cfg, prefix, output)?;
+    }
     
     Ok(())
 }
@@ -138,7 +148,7 @@ fn main() -> Result<()> {
     
     match args.command {
         Commands::Check { entrypoint, grammars } => check(entrypoint, grammars),
-        Commands::Translate { entrypoint, verbose, prefix, output, grammars } => translate(entrypoint, verbose, prefix, output, grammars),
+        Commands::Translate { entrypoint, verbose, baby, prefix, output, grammars } => translate(entrypoint, verbose, baby, prefix, output, grammars),
         Commands::Join { entrypoint, output, grammars } => join(entrypoint, output, grammars),
         Commands::Print { input } => print(input),
     }

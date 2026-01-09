@@ -4,7 +4,7 @@
 //
 // 1) You can either compile this code into a shared object
 //    that can be loaded by Chameleon's LibAFL components:
-//    $ gcc -O3 -flto -march=native -fno-stack-protector -fomit-frame-pointer -fvisibility=hidden -DCHAMELEON_VISIBLE -fPIC -shared -o generator.so <source file>
+//    $ gcc -O3 -flto -march=native -fno-stack-protector -fomit-frame-pointer -fvisibility=hidden -DCHAMELEON_VISIBLE -fPIC -shared -o mutator.so <source file>
 //
 // 2) Or, you can directly integrate this code into one of your projects. See include/chameleon.h for all of the
 //    functions you can use.
