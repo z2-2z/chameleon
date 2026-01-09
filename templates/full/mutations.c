@@ -43,7 +43,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
         if (UNLIKELY(sizeof({{ numberset.typ().c_type() }}) > output_length)) {
             return output_length;
         }
-        _mutate_numberset_{{ id }}(output);
+        _numberset_{{ id }}(output);
     }
     output += sizeof({{ numberset.typ().c_type() }});
     {%- if !loop.last %}
@@ -112,7 +112,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
                 if (UNLIKELY(sizeof({{ numberset.typ().c_type() }}) > output_length)) {
                     return output_length;
                 }
-                _mutate_numberset_{{ id }}(output);
+                _numberset_{{ id }}(output);
             }
             output += sizeof({{ numberset.typ().c_type() }});
             {%- if !loop.last %}

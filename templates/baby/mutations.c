@@ -23,7 +23,7 @@ static size_t _generate_nonterm_{{ set.nonterm().id() }} (unsigned char* output,
     if (UNLIKELY(sizeof({{ numberset.typ().c_type() }}) > output_length)) {
         return output_length;
     }
-    _mutate_numberset_{{ id }}(output);
+    _numberset_{{ id }}(output);
     output += sizeof({{ numberset.typ().c_type() }});
     {%- if !loop.last %}
     output_length -= sizeof({{ numberset.typ().c_type() }});
@@ -72,7 +72,7 @@ static size_t _generate_nonterm_{{ set.nonterm().id() }} (unsigned char* output,
             if (UNLIKELY(sizeof({{ numberset.typ().c_type() }}) > output_length)) {
                 return output_length;
             }
-            _mutate_numberset_{{ id }}(output);
+            _numberset_{{ id }}(output);
             output += sizeof({{ numberset.typ().c_type() }});
             {%- if !loop.last %}
             output_length -= sizeof({{ numberset.typ().c_type() }});
