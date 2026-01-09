@@ -160,3 +160,19 @@ impl BabyChameleon {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_baby() {
+        let seed = std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap().as_secs();
+        let mut buffer = vec![0u8; 4096];
+        let generator = BabyChameleon::load("test-data/baby/generator.so", None).unwrap();
+        generator.seed(seed as usize);
+        generator.generate(&mut buffer);
+        let s = String::from_utf8_lossy(&buffer);
+        println!("{}", s);
+    }
+}
