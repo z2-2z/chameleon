@@ -14,6 +14,7 @@ struct ChameleonWalk {
 type FunctionSeed = unsafe extern "C" fn(usize);
 type FunctionMutate = unsafe extern "C" fn(*mut ChameleonWalk, *mut u8, usize) -> usize;
 type FunctionGenerate = unsafe extern "C" fn(*mut ChameleonWalk, *mut u8, usize) -> usize;
+type FunctionBabyGenerate = unsafe extern "C" fn(*mut u8, usize) -> usize;
 
 fn get_fn<T: Copy>(lib: &libloading::Library, name: String) -> Result<T> {
     let f: libloading::Symbol<T> = unsafe {
@@ -64,7 +65,7 @@ impl Chameleon {
         }
     }
     
-    pub(crate) fn mutate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
+    pub fn mutate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
         assert_ne!(self.mutate as usize, 0);
         
         let mut c = ChameleonWalk {
@@ -87,7 +88,7 @@ impl Chameleon {
         }
     }
     
-    pub(crate) fn generate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
+    pub fn generate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
         assert_ne!(self.generate as usize, 0);
         
         let mut c = ChameleonWalk {
@@ -104,6 +105,55 @@ impl Chameleon {
             );
             
             walk.set_len(c.length);
+            output.set_len(new_len);
+            
+            new_len < output.capacity()
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct BabyChameleon {
+    seed: FunctionSeed,
+    generate: FunctionBabyGenerate,
+}
+
+impl BabyChameleon {
+    pub fn load<P: AsRef<Path>>(shared_object: P, prefix: Option<&str>) -> Result<Self> {
+        let shared_object = shared_object.as_ref();
+        let prefix = prefix.unwrap_or(DEFAULT_PREFIX);
+        let lib = unsafe {
+            libloading::Library::new(shared_object)
+        }?;
+        
+        let seed = get_fn::<FunctionSeed>(&lib, format!("{prefix}_seed"))?;
+        let generate = get_fn::<FunctionBabyGenerate>(&lib, format!("{prefix}_generate"))?;
+        
+        std::mem::forget(lib);
+        
+        Ok(Self {
+            seed,
+            generate,
+        })
+    }
+    
+    pub fn seed(&self, seed: usize) {
+        assert_ne!(self.seed as usize, 0);
+        
+        unsafe {
+            (self.seed)(seed);
+        }
+    }
+    
+    pub fn generate(&self, output: &mut Vec<u8>) -> bool {
+        assert_ne!(self.generate as usize, 0);
+        
+        unsafe {
+            let new_len = (self.generate)(
+                output.as_mut_ptr(),
+                output.capacity()
+            );
+            
             output.set_len(new_len);
             
             new_len < output.capacity()
