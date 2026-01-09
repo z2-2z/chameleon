@@ -28,7 +28,8 @@ valid JSON.
 
    Options:
      -e, --entrypoint <ENTRYPOINT>  Sets the entrypoint for the grammar
-     -v, --verbose
+     -v, --verbose                  Enable verbose logging
+     -b, --baby                     Enable "baby" mode to output just a simple generator and not a full mutation procedure
      -p, --prefix <PREFIX>          Sets a prefix for the generated function names
      -o, --output <OUTPUT>          Name of resulting .c file
    ```
@@ -36,7 +37,7 @@ valid JSON.
     - Use the C code directly in your project via `include/chameleon.h`
     - Compile C code into a `.so` and use it with Chameleon's LibAFL components
       ```rs
-      let chameleon = Chameleon::load("path/to/my.so");
+      let chameleon = Chameleon::load("path/to/mutator.so");
       let generator = ChameleonGenerator::new(chameleon); // LibAFL Generator
       let mutator = ChameleonMutator::new(chameleon); // LibAFL Mutator
       ```
