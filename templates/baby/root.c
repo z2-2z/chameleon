@@ -28,7 +28,7 @@
 
 /***** MACROS *****/
 
-#define WEIGHTED_RANDOM(n) (WEIGHTED_RAND_LOOKUP_TABLE[internal_random() % n])
+#define TRIANGULAR_RANDOM(n) (TRIANGULAR_LOOKUP_TABLE[internal_random() % n])
 
 #undef UNLIKELY
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
@@ -65,7 +65,7 @@ static inline size_t internal_random (void) {
     return rand_state = x;
 }
 
-static const unsigned char WEIGHTED_RAND_LOOKUP_TABLE[] = {
+static const unsigned char TRIANGULAR_LOOKUP_TABLE[] = {
 {% for i in 1..=grammar.max_num_of_rules() %}
 {%- for j in 0..i -%}
 {{ i - 1 }},
