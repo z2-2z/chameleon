@@ -1,5 +1,5 @@
 {% for set in grammar.rules() %}
-// This is the mutation function for non-terminal '{{ grammar.nonterminal(set.nonterm().id()) }}'
+// This is the generator function for non-terminal '{{ grammar.nonterminal(set.nonterm().id()) }}'
 {%- if set.rules().len() <= 1 %}
 static size_t _generate_nonterm_{{ set.nonterm().id() }} (unsigned char* output, size_t output_length)  {
     {%- if set.has_no_symbols() %}
