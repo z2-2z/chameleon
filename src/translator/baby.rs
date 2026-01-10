@@ -4,8 +4,8 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 #[derive(askama::Template)]
-#[template(path = "baby/mutations.c", escape = "none")]
-struct Mutations<'a> {
+#[template(path = "baby/generators.c", escape = "none")]
+struct Generators<'a> {
     grammar: &'a TranslatorGrammar,
 }
 
@@ -20,7 +20,7 @@ struct Numbersets<'a> {
 struct Root<'a> {
     grammar: &'a TranslatorGrammar,
     numbersets: Numbersets<'a>,
-    mutations: Mutations<'a>,
+    generators: Generators<'a>,
     prefix: &'a str,
 }
 
@@ -40,13 +40,13 @@ pub fn render<P: Into<PathBuf>>(grammar: TranslatorGrammar, arg_prefix: Option<S
     let numbersets = Numbersets {
         grammar: &grammar,
     };
-    let mutations = Mutations {
+    let generators = Generators {
         grammar: &grammar,
     };
     let root = Root {
         grammar: &grammar,
         numbersets,
-        mutations,
+        generators,
         prefix,
     };
     let source = root.render()?;

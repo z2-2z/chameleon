@@ -92,7 +92,7 @@ static size_t _generate_nonterm_{{ id }} (unsigned char*, size_t);
 
 {{ numbersets }}
 
-{{ mutations }}
+{{ generators }}
 
 EXPORT_FUNCTION
 void {{ prefix }}_seed (size_t new_seed) {
