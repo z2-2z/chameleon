@@ -66,7 +66,7 @@ mod tests {
         let mut generator = ChameleonGenerator::new(chameleon);
         let input = generator.generate(&mut ()).unwrap();
         let bytes = input.target_bytes();
-        let s = std::str::from_utf8(&bytes).unwrap();
+        let s = String::from_utf8_lossy(&bytes);
         println!("{s}");
     }
     

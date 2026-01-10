@@ -36,6 +36,8 @@
 
 /***** MACROS *****/
 
+#define WEIGHTED_RANDOM(n) (WEIGHTED_RAND_LOOKUP_TABLE[internal_random() % n])
+
 #undef UNLIKELY
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 #undef LIKELY
@@ -79,22 +81,13 @@ static inline size_t internal_random (void) {
     return rand_state = x;
 }
 
-static inline size_t weighted_random (size_t n) {
-    if (UNLIKELY(n < 3)) {
-        return internal_random() % n;
-    }
-    
-    size_t part = n / 3;
-    size_t idx = internal_random() % part;
-    
-    switch (internal_random() % 4) {
-        case 0: return idx;
-        case 1:
-        case 2: return part + idx;
-        case 3: return 2 * part + idx;
-        default: __builtin_unreachable();
-    }
-}
+static const unsigned char WEIGHTED_RAND_LOOKUP_TABLE[] = {
+{% for i in 1..=grammar.max_num_of_rules() %}
+{%- for j in 0..i -%}
+{{ i - 1 }},
+{%- endfor %}
+{% endfor -%}
+};
 
 /***** TERMINALS *****/
 
@@ -148,7 +141,7 @@ EXPORT_FUNCTION
 size_t {{ prefix }}_mutate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
     size_t length = 0;
     if (LIKELY(walk->length > 0)) {
-        length = weighted_random(walk->length);
+        length = internal_random() % walk->length;
         walk->length = 0;
     }
     return _mutate_nonterm_{{ grammar.entrypoint().id() }}(walk->steps, length, walk->capacity, &walk->length, output, output_length);
