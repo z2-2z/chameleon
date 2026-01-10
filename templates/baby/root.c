@@ -28,6 +28,8 @@
 
 /***** MACROS *****/
 
+#define WEIGHTED_RANDOM(n) (WEIGHTED_RAND_LOOKUP_TABLE[internal_random() % n])
+
 #undef UNLIKELY
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 #undef LIKELY
@@ -70,12 +72,6 @@ static const unsigned char WEIGHTED_RAND_LOOKUP_TABLE[] = {
 {%- endfor %}
 {% endfor -%}
 };
-
-static size_t weighted_random (size_t num_rules) {
-    size_t modulus = (num_rules * (num_rules + 1)) / 2;
-    size_t idx = internal_random() % modulus;
-    return WEIGHTED_RAND_LOOKUP_TABLE[idx];
-}
 
 /***** TERMINALS *****/
 

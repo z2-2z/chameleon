@@ -60,7 +60,7 @@ static size_t _generate_nonterm_{{ set.nonterm().id() }} (unsigned char* output,
     {%- endif %}
     unsigned char* original_output = output;
     
-    switch (weighted_random({{ set.rules().len() }})) {
+    switch (WEIGHTED_RANDOM({{ (set.rules().len() * (set.rules().len() + 1)) / 2 }})) {
         {%- for (i, rule) in set.rules().iter().enumerate() %}
         case {{ i }}: {
             {%- for symbol in rule %}
