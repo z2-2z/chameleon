@@ -63,6 +63,20 @@ static inline size_t internal_random (void) {
     return rand_state = x;
 }
 
+static const unsigned char WEIGHTED_RAND_LOOKUP_TABLE[] = {
+{% for i in 1..=grammar.max_num_of_rules() %}
+{%- for j in 0..i -%}
+{{ i - 1 }},
+{%- endfor %}
+{% endfor -%}
+};
+
+static size_t weighted_random (size_t num_rules) {
+    size_t modulus = (num_rules * (num_rules + 1)) / 2;
+    size_t idx = internal_random() % modulus;
+    return WEIGHTED_RAND_LOOKUP_TABLE[idx];
+}
+
 /***** TERMINALS *****/
 
 {% for (id, content) in grammar.terminals() -%}

@@ -113,6 +113,12 @@ pub struct RuleSet {
 }
 
 impl RuleSet {
+    fn insert_sorted(&mut self, rhs: Vec<Symbol>) {
+        match self.rules.binary_search_by(|x| x.len().cmp(&rhs.len())) {
+            Ok(idx) | Err(idx) => self.rules.insert(idx, rhs)
+        }
+    }
+    
     pub fn nonterm(&self) -> &NonTerminal {
         &self.nonterm
     }
@@ -252,7 +258,7 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         
         for rule in &mut self.rules {
             if rule.nonterm == nonterm {
-                rule.rules.push(rhs);
+                rule.insert_sorted(rhs);
                 return;
             }
         }
@@ -271,6 +277,11 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         
         let entrypoint = self.nonterm_id(cfg.entrypoint().name());
         let numbersets = self.numbersets.into_iter().map(|(k, v)| (v, Numberset::from(k))).collect();
+        let mut max_num_rules = 0;
+        
+        for ruleset in &self.rules {
+            max_num_rules = std::cmp::max(max_num_rules, ruleset.rules().len());
+        }
         
         TranslatorGrammar {
             entrypoint: NonTerminal(entrypoint),
@@ -278,6 +289,7 @@ impl<'a>  TranslatorGrammarConverter<'a> {
             numbersets,
             nonterminals: reverse_id_map(self.nonterms),
             terminals: reverse_id_map(self.terminals),
+            max_num_rules,
         }
     }
 }
@@ -289,6 +301,7 @@ pub struct TranslatorGrammar {
     numbersets: HashMap<usize, Numberset>,
     nonterminals: HashMap<usize, String>,
     terminals: HashMap<usize, Vec<u8>>,
+    max_num_rules: usize,
 }
 
 impl TranslatorGrammar {
@@ -322,5 +335,9 @@ impl TranslatorGrammar {
     
     pub fn terminals(&self) -> &HashMap<usize, Vec<u8>> {
         &self.terminals
+    }
+    
+    pub fn max_num_of_rules(&self) -> usize {
+        self.max_num_rules
     }
 }
