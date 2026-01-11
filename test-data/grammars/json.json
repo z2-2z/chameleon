@@ -1,0 +1,126 @@
+{
+    "VALUE": [
+        "WS VALUE_CONTENT WS"
+    ],
+    "VALUE_CONTENT": [
+        "STRING",
+        "NUMBER",
+        "OBJECT",
+        "ARRAY",
+        "'true'",
+        "'false'",
+        "'null'"
+    ],
+    
+    "OBJECT": [
+        "'{' WS '}'",
+        "'{' OBJECT_SEQUENCE"
+    ],
+    "OBJECT_SEQUENCE": [
+        "WS STRING WS ':' VALUE OBJECT_END"
+    ],
+    "OBJECT_END": [
+        "'}'",
+        "',' OBJECT_SEQUENCE"
+    ],
+    
+    "ARRAY": [
+        "'[' WS ']'",
+        "'[' ARRAY_SEQUENCE"
+    ],
+    "ARRAY_SEQUENCE": [
+        "VALUE ARRAY_END"
+    ],
+    "ARRAY_END": [
+        "']'",
+        "',' ARRAY_SEQUENCE"
+    ],
+    
+    "STRING": [
+        "'\"' STRING_CONTENT"
+    ],
+    "STRING_CONTENT": [
+        "'\"'",
+        "UTF_8_CHAR STRING_CONTENT",
+        "STRING_ESCAPE STRING_CONTENT"
+    ],
+    "STRING_ESCAPE": [
+        "'\\' ESCAPE_CHAR"
+    ],
+    "ESCAPE_CHAR": [
+        "'\"'",
+        "'\\'",
+        "'/'",
+        "'b'",
+        "'f'",
+        "'n'",
+        "'r'",
+        "'t'"
+    ],
+    "UTF_8_CHAR": [
+        "'A'"
+    ],
+    
+    "WS": [
+        "''"
+    ],
+    
+    "NUMBER": [
+        "SIGN LEADING_DIGITS FRACTION EXPONENT"
+    ],
+    "SIGN": [
+        "''",
+        "'-'"
+    ],
+    "LEADING_DIGITS": [
+        "'0'",
+        "NON_ZERO_DIGIT MORE_DIGITS"
+    ],
+    "NON_ZERO_DIGIT": [
+        "'1'",
+        "'2'",
+        "'3'",
+        "'4'",
+        "'5'",
+        "'6'",
+        "'7'",
+        "'8'",
+        "'9'"
+    ],
+    "DIGIT": [
+        "'0'",
+        "'1'",
+        "'2'",
+        "'3'",
+        "'4'",
+        "'5'",
+        "'6'",
+        "'7'",
+        "'8'",
+        "'9'"
+    ],
+    "DIGITS": [
+        "DIGIT MORE_DIGITS"
+    ],
+    "MORE_DIGITS": [
+        "''",
+        "DIGITS"
+    ],
+    "FRACTION": [
+        "''",
+        "'.' DIGITS"
+    ],
+    "EXPONENT": [
+        "''",
+        "EXPONENT_PREFIX EXPONENT_SIGN DIGITS"
+    ],
+    "EXPONENT_PREFIX": [
+        "'e'",
+        "'E'"
+    ],
+    "EXPONENT_SIGN": [
+        "''",
+        "'+'",
+        "'-'"
+    ]
+}
