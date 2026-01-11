@@ -64,7 +64,7 @@ static inline size_t internal_random (void) {
     x ^= x << 17;
     return rand_state = x;
 }
-
+{% if grammar.max_num_of_rules() > 0 %}
 static const unsigned char TRIANGULAR_LOOKUP_TABLE[] = {
 {% for i in 1..=grammar.max_num_of_rules() %}
 {%- for j in 0..i -%}
@@ -72,6 +72,7 @@ static const unsigned char TRIANGULAR_LOOKUP_TABLE[] = {
 {%- endfor %}
 {% endfor -%}
 };
+{% endif %}
 
 /***** TERMINALS *****/
 

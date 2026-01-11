@@ -160,6 +160,21 @@ impl RuleSet {
         
         true
     }
+    
+    pub fn is_triangular(&self) -> bool {
+        let mut sim_score = 0;
+        let mut prev = usize::MAX;
+        
+        for rule in &self.rules {
+            if prev == rule.len() {
+                sim_score += 1;
+            }
+            
+            prev = rule.len();
+        }
+        
+        (100 * sim_score / self.rules.len()) <= 25
+    }
 }
 
 #[inline]
@@ -280,7 +295,9 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         let mut max_num_rules = 0;
         
         for ruleset in &self.rules {
-            max_num_rules = std::cmp::max(max_num_rules, ruleset.rules().len());
+            if ruleset.is_triangular() {
+                max_num_rules = std::cmp::max(max_num_rules, ruleset.rules().len());
+            }
         }
         
         TranslatorGrammar {
