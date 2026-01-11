@@ -93,7 +93,11 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
     mutate = (s >= length);
     
     if (mutate) {
+        {% if set.is_triangular() -%}
         rule = TRIANGULAR_RANDOM({{ (set.rules().len() * (set.rules().len() + 1)) / 2 }});
+        {%- else -%}
+        rule = internal_random() % {{ set.rules().len() }};
+        {%- endif %}
         steps[s] = rule;
     } else {
         rule = steps[s];
