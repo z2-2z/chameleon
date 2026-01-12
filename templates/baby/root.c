@@ -97,7 +97,11 @@ static size_t _generate_nonterm_{{ id }} (unsigned char*, size_t);
 
 EXPORT_FUNCTION
 void {{ prefix }}_seed (size_t new_seed) {
-    rand_state = new_seed;
+    if (new_seed != 0) {
+        rand_state = new_seed;
+    } else {
+        rand_state = CHAMELEON_SEED;
+    }
 }
 
 EXPORT_FUNCTION

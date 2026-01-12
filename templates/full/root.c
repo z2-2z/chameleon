@@ -133,7 +133,11 @@ static size_t _mutate_nonterm_{{ id }} (unsigned int*, const size_t, const size_
 #ifndef OMIT_CHAMELEON_SEED
 EXPORT_FUNCTION
 void {{ prefix }}_seed (size_t new_seed) {
-    rand_state = new_seed;
+    if (new_seed != 0) {
+        rand_state = new_seed;
+    } else {
+        rand_state = CHAMELEON_SEED;
+    }
 }
 #endif /* OMIT_CHAMELEON_SEED */
 
