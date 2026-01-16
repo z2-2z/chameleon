@@ -7,8 +7,8 @@
 #define OUTPUT_LENGTH (4 * 4096)
 
 /*
-Generator: 87 320411551 invalid=(14/154243328) 
-Mutator: 73 572876150 invalid=(229/9868137) 
+Generator: 87 320411551 invalid=(14/154243328) ~123 MiB/s or 1.7m gens/s
+Mutator: 73 572876150 invalid=(229/9868137) ~146 MiB/s or 134k muts/s
 */
 
 struct timespec diff_timespec(struct timespec *time1,
