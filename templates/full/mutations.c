@@ -1,7 +1,7 @@
 {% for set in grammar.rules() %}
 // This is the mutation function for non-terminal '{{ grammar.nonterminal(set.nonterm().id()) }}'
 {%- if set.rules().len() <= 1 %}
-static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_{{ set.nonterm().id() }} ({{ grammar.step_type() }}* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     {%- if set.has_no_symbols() %}
     (void) steps;
     (void) length;
@@ -9,9 +9,10 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
     (void) output_length;
     size_t s = *step;
     
-    if (LIKELY(s < capacity)) {
-        *step = s + 1;
+    if (UNLIKELY(s >= capacity)) {
+        return output_length;
     }
+    *step = s + 1;
     
     return 0;
     {%- else %}
@@ -26,7 +27,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
     *step = s + 1;
     {%- if set.has_terms() %}
@@ -74,19 +75,20 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
     {%- endif %}
 }
 {%- else %}
-static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_{{ set.nonterm().id() }} ({{ grammar.step_type() }}* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     {%- if set.has_no_symbols() %}
     (void) output_length;
     {%- endif %}
     {%- if set.has_nonterms() %}
     size_t r;
     {%- endif %}
-    unsigned int mutate, rule;
+    unsigned int mutate;
+    {{ grammar.step_type() }} rule;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
     *step = s + 1;
     
@@ -94,7 +96,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (unsigned int* steps, con
     
     if (mutate) {
         {% if set.is_triangular() -%}
-        rule = TRIANGULAR_RANDOM({{ (set.rules().len() * (set.rules().len() + 1)) / 2 }});
+        rule = ({{ grammar.step_type() }}) TRIANGULAR_RANDOM({{ (set.rules().len() * (set.rules().len() + 1)) / 2 }});
         {%- else -%}
         rule = internal_random() % {{ set.rules().len() }};
         {%- endif %}

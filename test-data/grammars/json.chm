@@ -36,18 +36,11 @@ namespace json
     "f" ||
     "n" ||
     "r" ||
-    "t" 
+    "t"  || "u" <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT>
 )
-/* Technically, \uXXXX is part of the json spec but randomly generating
-   hex digits will create invalid unicode strings so we leave it out...
-    
-    || "u" <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT>
-)
-
 <HEX-DIGIT> => u8 {
     0x30..0x39, 0x41..0x46, 0x61..0x66
 }
-*/
 
 <UTF-8-CHAR> => <UTF-8-CHAR-1> || <UTF-8-CHAR-2> || <UTF-8-CHAR-3> || <UTF-8-CHAR-4>
 <UTF-8-CHAR-1> => u8 { 32..33, 35..91, 93..127 }
@@ -55,7 +48,6 @@ namespace json
 <UTF-8-CHAR-3> => u8 { 224..239 } u8 { 128..191 } u8 { 128..191 }
 <UTF-8-CHAR-4> => u8 { 240..247 } u8 { 128..191 } u8 { 128..191 } u8 { 128..191 }
 
-/* Disabling whitespaces...
 <WS> => (
     "" ||
     " " <WS> ||
@@ -63,8 +55,6 @@ namespace json
     "\r" <WS> ||
     "\t" <WS>
 )
-*/
-<WS> => ""
 
 <NUMBER> => <SIGN> <LEADING-DIGITS> <FRACTION> <EXPONENT>
 <SIGN> => "" || "-"

@@ -36,8 +36,6 @@
 
 /***** MACROS *****/
 
-#define TRIANGULAR_RANDOM(n) (TRIANGULAR_LOOKUP_TABLE[internal_random() % n])
-
 #undef UNLIKELY
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 #undef LIKELY
@@ -61,10 +59,12 @@
  #define CHAMELEON_SEED 1739639165216539016ULL
 #endif
 
+#define TRIANGULAR_RANDOM(n) (TRIANGULAR_LOOKUP_TABLE[internal_random() % n])
+
 /***** TYPES *****/
 
 typedef struct {
-    unsigned int* steps;
+    {{ grammar.step_type() }}* steps;
     size_t length;
     size_t capacity;
 } ChameleonWalk;
@@ -122,7 +122,7 @@ static const unsigned char TERMINAL_{{ id }}[{{ content.len() }}] = {
 
 #if !defined(OMIT_CHAMELEON_MUTATE) || !defined(OMIT_CHAMELEON_GENERATE)
 {% for (id, _) in grammar.nonterminals() %}
-static size_t _mutate_nonterm_{{ id }} (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_{{ id }} ({{ grammar.step_type() }}*, const size_t, const size_t, size_t*, unsigned char*, size_t);
 {%- endfor %}
 
 {{ numbersets }}
@@ -144,7 +144,7 @@ void {{ prefix }}_seed (size_t new_seed) {
 #ifndef OMIT_CHAMELEON_INIT
 EXPORT_FUNCTION
 void {{ prefix }}_init (ChameleonWalk* walk, size_t capacity) {
-    walk->steps = malloc(capacity * sizeof(unsigned int));
+    walk->steps = malloc(capacity * sizeof({{ grammar.step_type() }}));
     walk->length = 0;
     walk->capacity = capacity;
 }
