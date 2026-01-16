@@ -12,22 +12,15 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (step_t* steps, const siz
     return 0;
     {%- else %}
     (void) steps;
+    (void) capacity;
     {%- if set.has_nonterms() %}
     size_t r;
     {%- endif %}
-    {%- if set.has_terms() %}
-    unsigned int mutate;
-    {%- endif %}
     unsigned char* original_output = output;
-    size_t s = *step;
-    
-    if (UNLIKELY(s >= capacity)) {
-        return output_length;
-    }
-    
     {%- if set.has_terms() %}
-    mutate = (s >= length);
-    {% endif %}
+    unsigned int mutate = (*step >= length);;
+    {%- endif %}
+    
     {%- let rule = set.rules().iter().next().unwrap() %}
     {% for symbol in rule %}
     {%- match symbol %}
