@@ -61,9 +61,9 @@ static size_t _generate_nonterm_{{ set.nonterm().id() }} (unsigned char* output,
     unsigned char* original_output = output;
     
     {% if set.is_triangular() -%}
-    switch (TRIANGULAR_RANDOM({{ (set.rules().len() * (set.rules().len() + 1)) / 2 }})) {
+    switch (TRIANGULAR_RANDOM({{ set.rules().len() }})) {
     {%- else  -%}
-    switch (internal_random() % {{ set.rules().len() }}) {
+    switch (LINEAR_RANDOM({{ set.rules().len() }})) {
     {%- endif %}
         {%- for (i, rule) in set.rules().iter().enumerate() %}
         case {{ i }}: {

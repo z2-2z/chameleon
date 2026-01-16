@@ -1,3 +1,4 @@
 bench
 json.c
 generator.so
+generator.disas

@@ -28,8 +28,6 @@
 
 /***** MACROS *****/
 
-#define TRIANGULAR_RANDOM(n) (TRIANGULAR_LOOKUP_TABLE[internal_random() % n])
-
 #undef UNLIKELY
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 #undef LIKELY
@@ -52,6 +50,9 @@
 #ifndef CHAMELEON_SEED
  #define CHAMELEON_SEED 1739639165216539016ULL
 #endif
+
+#define TRIANGULAR_RANDOM(n) (TRIANGULAR_LOOKUP_TABLE[internal_random() % ((n * (n + 1)) >> 1)])
+#define LINEAR_RANDOM(n) (internal_random() % n)
 
 /***** PRNG *****/
 
