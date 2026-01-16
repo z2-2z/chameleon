@@ -36,7 +36,8 @@ namespace json
     "f" ||
     "n" ||
     "r" ||
-    "t"  || "u" <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT>
+    "t"  ||
+    "u" <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT> <HEX-DIGIT>
 )
 <HEX-DIGIT> => u8 {
     0x30..0x39, 0x41..0x46, 0x61..0x66
