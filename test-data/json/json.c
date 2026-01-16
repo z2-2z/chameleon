@@ -36,8 +36,6 @@
 
 /***** MACROS *****/
 
-#define TRIANGULAR_RANDOM(n) (TRIANGULAR_LOOKUP_TABLE[internal_random() % n])
-
 #undef UNLIKELY
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 #undef LIKELY
@@ -61,10 +59,15 @@
  #define CHAMELEON_SEED 1739639165216539016ULL
 #endif
 
+#define TRIANGULAR_RANDOM(n) (TRIANGULAR_LOOKUP_TABLE[internal_random() % ((n * (n + 1)) >> 1)])
+#define LINEAR_RANDOM(n) (internal_random() % n)
+
 /***** TYPES *****/
 
+typedef uint8_t step_t;
+
 typedef struct {
-    unsigned int* steps;
+    step_t* steps;
     size_t length;
     size_t capacity;
 } ChameleonWalk;
@@ -81,24 +84,7 @@ static inline size_t internal_random (void) {
     return rand_state = x;
 }
 
-static inline size_t weighted_random (size_t n) {
-    if (UNLIKELY(n < 3)) {
-        return internal_random() % n;
-    }
-    
-    size_t part = n / 3;
-    size_t idx = internal_random() % part;
-    
-    switch (internal_random() % 4) {
-        case 0: return idx;
-        case 1:
-        case 2: return part + idx;
-        case 3: return 2 * part + idx;
-        default: __builtin_unreachable();
-    }
-}
-
-static const unsigned char TRIANGULAR_LOOKUP_TABLE[] = {
+static const step_t TRIANGULAR_LOOKUP_TABLE[] = {
 0,
 1,1,
 2,2,2,
@@ -110,74 +96,77 @@ static const unsigned char TRIANGULAR_LOOKUP_TABLE[] = {
 
 /***** TERMINALS *****/
 
-static const unsigned char TERMINAL_9[1] = {
+static const unsigned char TERMINAL_6[1] = {
     0x5c
 };
-static const unsigned char TERMINAL_19[1] = {
-    0x5b
+static const unsigned char TERMINAL_14[1] = {
+    0x2b
+};
+static const unsigned char TERMINAL_19[5] = {
+    0x66,0x61,0x6c,0x73,0x65
+};
+static const unsigned char TERMINAL_7[1] = {
+    0x2f
+};
+static const unsigned char TERMINAL_10[1] = {
+    0x6e
+};
+static const unsigned char TERMINAL_8[1] = {
+    0x62
+};
+static const unsigned char TERMINAL_21[1] = {
+    0x3a
 };
 static const unsigned char TERMINAL_3[1] = {
     0x30
 };
-static const unsigned char TERMINAL_12[1] = {
-    0x66
-};
-static const unsigned char TERMINAL_13[1] = {
-    0x6e
+static const unsigned char TERMINAL_18[4] = {
+    0x74,0x72,0x75,0x65
 };
 static const unsigned char TERMINAL_0[1] = {
     0x7d
 };
-static const unsigned char TERMINAL_20[1] = {
-    0x3a
-};
-static const unsigned char TERMINAL_16[1] = {
-    0x2b
-};
 static const unsigned char TERMINAL_17[1] = {
-    0x2d
-};
-static const unsigned char TERMINAL_14[1] = {
-    0x72
-};
-static const unsigned char TERMINAL_15[1] = {
-    0x74
-};
-static const unsigned char TERMINAL_4[1] = {
-    0x2c
-};
-static const unsigned char TERMINAL_5[1] = {
-    0x2e
-};
-static const unsigned char TERMINAL_8[4] = {
-    0x6e,0x75,0x6c,0x6c
+    0x5b
 };
 static const unsigned char TERMINAL_22[1] = {
-    0x45
-};
-static const unsigned char TERMINAL_11[1] = {
-    0x62
-};
-static const unsigned char TERMINAL_10[1] = {
-    0x2f
-};
-static const unsigned char TERMINAL_7[5] = {
-    0x66,0x61,0x6c,0x73,0x65
-};
-static const unsigned char TERMINAL_21[1] = {
     0x65
 };
-static const unsigned char TERMINAL_18[1] = {
+static const unsigned char TERMINAL_15[1] = {
+    0x2d
+};
+static const unsigned char TERMINAL_16[1] = {
     0x7b
 };
 static const unsigned char TERMINAL_1[1] = {
     0x5d
 };
+static const unsigned char TERMINAL_11[1] = {
+    0x72
+};
+static const unsigned char TERMINAL_13[1] = {
+    0x75
+};
+static const unsigned char TERMINAL_4[1] = {
+    0x2c
+};
+static const unsigned char TERMINAL_9[1] = {
+    0x66
+};
+static const unsigned char TERMINAL_12[1] = {
+    0x74
+};
 static const unsigned char TERMINAL_2[1] = {
     0x22
 };
-static const unsigned char TERMINAL_6[4] = {
-    0x74,0x72,0x75,0x65
+static const unsigned char TERMINAL_5[1] = {
+    0x2e
+};
+static const unsigned char TERMINAL_20[4] = {
+    0x6e,0x75,0x6c,0x6c
+};
+static const unsigned char TERMINAL_23[1] = {
+    0x45
 };
 
 
@@ -185,62 +174,55 @@ static const unsigned char TERMINAL_6[4] = {
 
 #if !defined(OMIT_CHAMELEON_MUTATE) || !defined(OMIT_CHAMELEON_GENERATE)
 
-static size_t _mutate_nonterm_0 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_4 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_10 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_3 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_2 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_8 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_15 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_12 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_11 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_13 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_9 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_16 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_1 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_5 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_19 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_7 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_6 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_18 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_17 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_14 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_10 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_7 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_19 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_9 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_1 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_3 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_17 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_13 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_20 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_15 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_14 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_2 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_6 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_12 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_4 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_11 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_0 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_8 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_18 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_5 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_16 (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
 
 
-static inline void _numberset_5 (unsigned char* output) {
-    uint64_t value = 240ULL + (internal_random() % (247ULL - 240ULL + 1));
-    __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
-}
-static inline void _numberset_4 (unsigned char* output) {
-    uint64_t value = 224ULL + (internal_random() % (239ULL - 224ULL + 1));
-    __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
-}
-static inline void _numberset_1 (unsigned char* output) {
+static inline void _numberset_2 (unsigned char* output) {
     uint64_t value = 48ULL + (internal_random() % (57ULL - 48ULL + 1));
     __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
 }
-static inline void _numberset_0 (unsigned char* output) {
-    uint64_t value = 128ULL + (internal_random() % (191ULL - 128ULL + 1));
+static inline void _numberset_7 (unsigned char* output) {
+    uint64_t value = 49ULL + (internal_random() % (57ULL - 49ULL + 1));
     __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
 }
-static inline void _numberset_3 (unsigned char* output) {
-    uint64_t value = 192ULL + (internal_random() % (223ULL - 192ULL + 1));
+static inline void _numberset_6 (unsigned char* output) {
+    uint64_t value = 240ULL + (internal_random() % (247ULL - 240ULL + 1));
     __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
 }
-static void _numberset_2 (unsigned char* output) {
+static void _numberset_3 (unsigned char* output) {
     uint64_t value;
     
-    switch (internal_random() % 3) {
+    switch (LINEAR_RANDOM(3)) {
         case 0: {
-            value = 32ULL + (internal_random() % (33ULL - 32ULL + 1));
-            break;
-        }
-        case 1: {
             value = 35ULL + (internal_random() % (91ULL - 35ULL + 1));
             break;
         }
-        case 2: {
+        case 1: {
             value = 93ULL + (internal_random() % (127ULL - 93ULL + 1));
+            break;
+        }
+        case 2: {
+            value = 32ULL + (internal_random() % (33ULL - 32ULL + 1));
             break;
         }
         default: {
@@ -250,28 +232,60 @@ static void _numberset_2 (unsigned char* output) {
     
     __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
 }
-static inline void _numberset_6 (unsigned char* output) {
-    uint64_t value = 49ULL + (internal_random() % (57ULL - 49ULL + 1));
+static inline void _numberset_4 (unsigned char* output) {
+    uint64_t value = 192ULL + (internal_random() % (223ULL - 192ULL + 1));
+    __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
+}
+static inline void _numberset_1 (unsigned char* output) {
+    uint64_t value = 128ULL + (internal_random() % (191ULL - 128ULL + 1));
+    __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
+}
+static void _numberset_0 (unsigned char* output) {
+    uint64_t value;
+    
+    switch (LINEAR_RANDOM(3)) {
+        case 0: {
+            value = 97ULL + (internal_random() % (102ULL - 97ULL + 1));
+            break;
+        }
+        case 1: {
+            value = 65ULL + (internal_random() % (70ULL - 65ULL + 1));
+            break;
+        }
+        case 2: {
+            value = 48ULL + (internal_random() % (57ULL - 48ULL + 1));
+            break;
+        }
+        default: {
+            __builtin_unreachable();
+        }
+    }
+    
+    __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
+}
+static inline void _numberset_5 (unsigned char* output) {
+    uint64_t value = 224ULL + (internal_random() % (239ULL - 224ULL + 1));
     __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
 }
 
 
 // This is the mutation function for non-terminal 'json::OBJECT-END'
-static size_t _mutate_nonterm_0 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_0 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     size_t r;
-    unsigned int mutate, rule;
+    unsigned int mutate;
+    step_t rule;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
     *step = s + 1;
     
     mutate = (s >= length);
     
     if (mutate) {
-        rule = TRIANGULAR_RANDOM(3);
+        rule = (step_t) TRIANGULAR_RANDOM(2);
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -279,10 +293,10 @@ static size_t _mutate_nonterm_0 (unsigned int* steps, const size_t length, const
     
     switch (rule) {
         case 0: {
+            if (UNLIKELY(sizeof(TERMINAL_0) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_0) > output_length)) {
-                    return output_length;
-                }
                 __builtin_memcpy(output, TERMINAL_0, sizeof(TERMINAL_0));
             }
             output += sizeof(TERMINAL_0);
@@ -290,15 +304,15 @@ static size_t _mutate_nonterm_0 (unsigned int* steps, const size_t length, const
         }
         
         case 1: {
+            if (UNLIKELY(sizeof(TERMINAL_4) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_4) > output_length)) {
-                    return output_length;
-                }
                 __builtin_memcpy(output, TERMINAL_4, sizeof(TERMINAL_4));
             }
             output += sizeof(TERMINAL_4);
             output_length -= sizeof(TERMINAL_4);
-            r = _mutate_nonterm_11(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_12(steps, length, capacity, step, output, output_length);
             output += r;
             break;
         }
@@ -312,21 +326,22 @@ static size_t _mutate_nonterm_0 (unsigned int* steps, const size_t length, const
 }
 
 // This is the mutation function for non-terminal 'json::ARRAY-END'
-static size_t _mutate_nonterm_1 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_1 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     size_t r;
-    unsigned int mutate, rule;
+    unsigned int mutate;
+    step_t rule;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
     *step = s + 1;
     
     mutate = (s >= length);
     
     if (mutate) {
-        rule = TRIANGULAR_RANDOM(3);
+        rule = (step_t) TRIANGULAR_RANDOM(2);
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -334,10 +349,10 @@ static size_t _mutate_nonterm_1 (unsigned int* steps, const size_t length, const
     
     switch (rule) {
         case 0: {
+            if (UNLIKELY(sizeof(TERMINAL_1) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_1) > output_length)) {
-                    return output_length;
-                }
                 __builtin_memcpy(output, TERMINAL_1, sizeof(TERMINAL_1));
             }
             output += sizeof(TERMINAL_1);
@@ -345,15 +360,15 @@ static size_t _mutate_nonterm_1 (unsigned int* steps, const size_t length, const
         }
         
         case 1: {
+            if (UNLIKELY(sizeof(TERMINAL_4) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_4) > output_length)) {
-                    return output_length;
-                }
                 __builtin_memcpy(output, TERMINAL_4, sizeof(TERMINAL_4));
             }
             output += sizeof(TERMINAL_4);
             output_length -= sizeof(TERMINAL_4);
-            r = _mutate_nonterm_12(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_13(steps, length, capacity, step, output, output_length);
             output += r;
             break;
         }
@@ -367,7 +382,7 @@ static size_t _mutate_nonterm_1 (unsigned int* steps, const size_t length, const
 }
 
 // This is the mutation function for non-terminal 'json::STRING'
-static size_t _mutate_nonterm_2 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_2 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     (void) steps;
     size_t r;
     unsigned int mutate;
@@ -375,16 +390,15 @@ static size_t _mutate_nonterm_2 (unsigned int* steps, const size_t length, const
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
-    *step = s + 1;
     mutate = (s >= length);
     
     
-    if (mutate) {
-        if (UNLIKELY(sizeof(TERMINAL_2) > output_length)) {
-            return output_length;
-        }
+    if (UNLIKELY(sizeof(TERMINAL_2) > output_length)) {
+        return output_length;
+    }
+    if (mutate) {   
         __builtin_memcpy(output, TERMINAL_2, sizeof(TERMINAL_2));
     }
     output += sizeof(TERMINAL_2);
@@ -396,21 +410,22 @@ static size_t _mutate_nonterm_2 (unsigned int* steps, const size_t length, const
 }
 
 // This is the mutation function for non-terminal 'json::STRING-CONTENT'
-static size_t _mutate_nonterm_3 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_3 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     size_t r;
-    unsigned int mutate, rule;
+    unsigned int mutate;
+    step_t rule;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
     *step = s + 1;
     
     mutate = (s >= length);
     
     if (mutate) {
-        rule = TRIANGULAR_RANDOM(21);
+        rule = (step_t) TRIANGULAR_RANDOM(6);
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -418,10 +433,10 @@ static size_t _mutate_nonterm_3 (unsigned int* steps, const size_t length, const
     
     switch (rule) {
         case 0: {
+            if (UNLIKELY(sizeof(TERMINAL_2) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_2) > output_length)) {
-                    return output_length;
-                }
                 __builtin_memcpy(output, TERMINAL_2, sizeof(TERMINAL_2));
             }
             output += sizeof(TERMINAL_2);
@@ -429,11 +444,11 @@ static size_t _mutate_nonterm_3 (unsigned int* steps, const size_t length, const
         }
         
         case 1: {
+            if (UNLIKELY(sizeof(uint8_t) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(uint8_t) > output_length)) {
-                    return output_length;
-                }
-                _numberset_2(output);
+                _numberset_3(output);
             }
             output += sizeof(uint8_t);
             output_length -= sizeof(uint8_t);
@@ -443,15 +458,15 @@ static size_t _mutate_nonterm_3 (unsigned int* steps, const size_t length, const
         }
         
         case 2: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_9) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_9, sizeof(TERMINAL_9));
+            if (UNLIKELY(sizeof(TERMINAL_6) > output_length)) {
+                return output_length;
             }
-            output += sizeof(TERMINAL_9);
-            output_length -= sizeof(TERMINAL_9);
-            r = _mutate_nonterm_9(steps, length, capacity, step, output, output_length);
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_6, sizeof(TERMINAL_6));
+            }
+            output += sizeof(TERMINAL_6);
+            output_length -= sizeof(TERMINAL_6);
+            r = _mutate_nonterm_10(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
             r = _mutate_nonterm_3(steps, length, capacity, step, output, output_length);
@@ -460,15 +475,15 @@ static size_t _mutate_nonterm_3 (unsigned int* steps, const size_t length, const
         }
         
         case 3: {
+            if (UNLIKELY(sizeof(uint8_t) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(uint8_t) > output_length)) {
-                    return output_length;
-                }
-                _numberset_3(output);
+                _numberset_4(output);
             }
             output += sizeof(uint8_t);
             output_length -= sizeof(uint8_t);
-            r = _mutate_nonterm_18(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_19(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
             r = _mutate_nonterm_3(steps, length, capacity, step, output, output_length);
@@ -477,18 +492,18 @@ static size_t _mutate_nonterm_3 (unsigned int* steps, const size_t length, const
         }
         
         case 4: {
+            if (UNLIKELY(sizeof(uint8_t) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(uint8_t) > output_length)) {
-                    return output_length;
-                }
-                _numberset_4(output);
+                _numberset_5(output);
             }
             output += sizeof(uint8_t);
             output_length -= sizeof(uint8_t);
-            r = _mutate_nonterm_18(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_19(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
-            r = _mutate_nonterm_18(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_19(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
             r = _mutate_nonterm_3(steps, length, capacity, step, output, output_length);
@@ -497,21 +512,21 @@ static size_t _mutate_nonterm_3 (unsigned int* steps, const size_t length, const
         }
         
         case 5: {
+            if (UNLIKELY(sizeof(uint8_t) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(uint8_t) > output_length)) {
-                    return output_length;
-                }
-                _numberset_5(output);
+                _numberset_6(output);
             }
             output += sizeof(uint8_t);
             output_length -= sizeof(uint8_t);
-            r = _mutate_nonterm_18(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_19(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
-            r = _mutate_nonterm_18(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_19(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
-            r = _mutate_nonterm_18(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_19(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
             r = _mutate_nonterm_3(steps, length, capacity, step, output, output_length);
@@ -527,37 +542,58 @@ static size_t _mutate_nonterm_3 (unsigned int* steps, const size_t length, const
     return (size_t) (output - original_output);
 }
 
-// This is the mutation function for non-terminal 'json::WS'
-static size_t _mutate_nonterm_4 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+// This is the mutation function for non-terminal 'json::HEX-DIGIT'
+static size_t _mutate_nonterm_4 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     (void) steps;
-    (void) length;
-    (void) output;
-    (void) output_length;
-    size_t s = *step;
-    
-    if (LIKELY(s < capacity)) {
-        *step = s + 1;
-    }
-    
-    return 0;
-}
-
-// This is the mutation function for non-terminal 'json::LEADING-DIGITS'
-static size_t _mutate_nonterm_5 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
-    size_t r;
-    unsigned int mutate, rule;
+    unsigned int mutate;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
+    }
+    mutate = (s >= length);
+    
+    
+    if (UNLIKELY(sizeof(uint8_t) > output_length)) {
+        return output_length;
+    }
+    if (mutate) {   
+        _numberset_0(output);
+    }
+    output += sizeof(uint8_t);
+    
+    return (size_t) (output - original_output);
+}
+
+// This is the mutation function for non-terminal 'json::WS'
+static size_t _mutate_nonterm_5 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+    (void) steps;
+    (void) length;
+    (void) capacity;
+    (void) step;
+    (void) output;
+    (void) output_length;
+    return 0;
+}
+
+// This is the mutation function for non-terminal 'json::LEADING-DIGITS'
+static size_t _mutate_nonterm_6 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+    size_t r;
+    unsigned int mutate;
+    step_t rule;
+    unsigned char* original_output = output;
+    size_t s = *step;
+    
+    if (UNLIKELY(s >= capacity)) {
+        return output_length;
     }
     *step = s + 1;
     
     mutate = (s >= length);
     
     if (mutate) {
-        rule = TRIANGULAR_RANDOM(3);
+        rule = (step_t) TRIANGULAR_RANDOM(2);
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -565,10 +601,10 @@ static size_t _mutate_nonterm_5 (unsigned int* steps, const size_t length, const
     
     switch (rule) {
         case 0: {
+            if (UNLIKELY(sizeof(TERMINAL_3) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_3) > output_length)) {
-                    return output_length;
-                }
                 __builtin_memcpy(output, TERMINAL_3, sizeof(TERMINAL_3));
             }
             output += sizeof(TERMINAL_3);
@@ -576,15 +612,15 @@ static size_t _mutate_nonterm_5 (unsigned int* steps, const size_t length, const
         }
         
         case 1: {
+            if (UNLIKELY(sizeof(uint8_t) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(uint8_t) > output_length)) {
-                    return output_length;
-                }
-                _numberset_6(output);
+                _numberset_7(output);
             }
             output += sizeof(uint8_t);
             output_length -= sizeof(uint8_t);
-            r = _mutate_nonterm_6(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_7(steps, length, capacity, step, output, output_length);
             output += r;
             break;
         }
@@ -598,21 +634,22 @@ static size_t _mutate_nonterm_5 (unsigned int* steps, const size_t length, const
 }
 
 // This is the mutation function for non-terminal 'json::MORE-DIGITS'
-static size_t _mutate_nonterm_6 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_7 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     size_t r;
-    unsigned int mutate, rule;
+    unsigned int mutate;
+    step_t rule;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
     *step = s + 1;
     
     mutate = (s >= length);
     
     if (mutate) {
-        rule = TRIANGULAR_RANDOM(3);
+        rule = (step_t) TRIANGULAR_RANDOM(2);
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -624,15 +661,15 @@ static size_t _mutate_nonterm_6 (unsigned int* steps, const size_t length, const
         }
         
         case 1: {
+            if (UNLIKELY(sizeof(uint8_t) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(uint8_t) > output_length)) {
-                    return output_length;
-                }
-                _numberset_1(output);
+                _numberset_2(output);
             }
             output += sizeof(uint8_t);
             output_length -= sizeof(uint8_t);
-            r = _mutate_nonterm_6(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_7(steps, length, capacity, step, output, output_length);
             output += r;
             break;
         }
@@ -646,21 +683,22 @@ static size_t _mutate_nonterm_6 (unsigned int* steps, const size_t length, const
 }
 
 // This is the mutation function for non-terminal 'json::FRACTION'
-static size_t _mutate_nonterm_7 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_8 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     size_t r;
-    unsigned int mutate, rule;
+    unsigned int mutate;
+    step_t rule;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
     *step = s + 1;
     
     mutate = (s >= length);
     
     if (mutate) {
-        rule = TRIANGULAR_RANDOM(3);
+        rule = (step_t) TRIANGULAR_RANDOM(2);
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -672,15 +710,15 @@ static size_t _mutate_nonterm_7 (unsigned int* steps, const size_t length, const
         }
         
         case 1: {
+            if (UNLIKELY(sizeof(TERMINAL_5) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_5) > output_length)) {
-                    return output_length;
-                }
                 __builtin_memcpy(output, TERMINAL_5, sizeof(TERMINAL_5));
             }
             output += sizeof(TERMINAL_5);
             output_length -= sizeof(TERMINAL_5);
-            r = _mutate_nonterm_13(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_14(steps, length, capacity, step, output, output_length);
             output += r;
             break;
         }
@@ -694,21 +732,22 @@ static size_t _mutate_nonterm_7 (unsigned int* steps, const size_t length, const
 }
 
 // This is the mutation function for non-terminal 'json::EXPONENT'
-static size_t _mutate_nonterm_8 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_9 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     size_t r;
-    unsigned int mutate, rule;
+    unsigned int mutate;
+    step_t rule;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
     *step = s + 1;
     
     mutate = (s >= length);
     
     if (mutate) {
-        rule = internal_random() % 3;
+        rule = (step_t) LINEAR_RANDOM(3);
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -720,36 +759,234 @@ static size_t _mutate_nonterm_8 (unsigned int* steps, const size_t length, const
         }
         
         case 1: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_22) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_22, sizeof(TERMINAL_22));
+            if (UNLIKELY(sizeof(TERMINAL_23) > output_length)) {
+                return output_length;
             }
-            output += sizeof(TERMINAL_22);
-            output_length -= sizeof(TERMINAL_22);
-            r = _mutate_nonterm_10(steps, length, capacity, step, output, output_length);
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_23, sizeof(TERMINAL_23));
+            }
+            output += sizeof(TERMINAL_23);
+            output_length -= sizeof(TERMINAL_23);
+            r = _mutate_nonterm_11(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
-            r = _mutate_nonterm_13(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_14(steps, length, capacity, step, output, output_length);
             output += r;
             break;
         }
         
         case 2: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_21) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_21, sizeof(TERMINAL_21));
+            if (UNLIKELY(sizeof(TERMINAL_22) > output_length)) {
+                return output_length;
             }
-            output += sizeof(TERMINAL_21);
-            output_length -= sizeof(TERMINAL_21);
-            r = _mutate_nonterm_10(steps, length, capacity, step, output, output_length);
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_22, sizeof(TERMINAL_22));
+            }
+            output += sizeof(TERMINAL_22);
+            output_length -= sizeof(TERMINAL_22);
+            r = _mutate_nonterm_11(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
-            r = _mutate_nonterm_13(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_14(steps, length, capacity, step, output, output_length);
             output += r;
+            break;
+        }
+        
+        default: {
+            __builtin_unreachable();
+        }
+    }
+    
+    return (size_t) (output - original_output);
+}
+
+// This is the mutation function for non-terminal '(group 2)'
+static size_t _mutate_nonterm_10 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+    size_t r;
+    unsigned int mutate;
+    step_t rule;
+    unsigned char* original_output = output;
+    size_t s = *step;
+    
+    if (UNLIKELY(s >= capacity)) {
+        return output_length;
+    }
+    *step = s + 1;
+    
+    mutate = (s >= length);
+    
+    if (mutate) {
+        rule = (step_t) LINEAR_RANDOM(9);
+        steps[s] = rule;
+    } else {
+        rule = steps[s];
+    }
+    
+    switch (rule) {
+        case 0: {
+            if (UNLIKELY(sizeof(TERMINAL_6) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_6, sizeof(TERMINAL_6));
+            }
+            output += sizeof(TERMINAL_6);
+            break;
+        }
+        
+        case 1: {
+            if (UNLIKELY(sizeof(TERMINAL_7) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_7, sizeof(TERMINAL_7));
+            }
+            output += sizeof(TERMINAL_7);
+            break;
+        }
+        
+        case 2: {
+            if (UNLIKELY(sizeof(TERMINAL_8) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_8, sizeof(TERMINAL_8));
+            }
+            output += sizeof(TERMINAL_8);
+            break;
+        }
+        
+        case 3: {
+            if (UNLIKELY(sizeof(TERMINAL_9) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_9, sizeof(TERMINAL_9));
+            }
+            output += sizeof(TERMINAL_9);
+            break;
+        }
+        
+        case 4: {
+            if (UNLIKELY(sizeof(TERMINAL_10) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_10, sizeof(TERMINAL_10));
+            }
+            output += sizeof(TERMINAL_10);
+            break;
+        }
+        
+        case 5: {
+            if (UNLIKELY(sizeof(TERMINAL_11) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_11, sizeof(TERMINAL_11));
+            }
+            output += sizeof(TERMINAL_11);
+            break;
+        }
+        
+        case 6: {
+            if (UNLIKELY(sizeof(TERMINAL_12) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_12, sizeof(TERMINAL_12));
+            }
+            output += sizeof(TERMINAL_12);
+            break;
+        }
+        
+        case 7: {
+            if (UNLIKELY(sizeof(TERMINAL_2) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_2, sizeof(TERMINAL_2));
+            }
+            output += sizeof(TERMINAL_2);
+            break;
+        }
+        
+        case 8: {
+            if (UNLIKELY(sizeof(TERMINAL_13) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_13, sizeof(TERMINAL_13));
+            }
+            output += sizeof(TERMINAL_13);
+            output_length -= sizeof(TERMINAL_13);
+            r = _mutate_nonterm_4(steps, length, capacity, step, output, output_length);
+            output += r;
+            output_length -= r;
+            r = _mutate_nonterm_4(steps, length, capacity, step, output, output_length);
+            output += r;
+            output_length -= r;
+            r = _mutate_nonterm_4(steps, length, capacity, step, output, output_length);
+            output += r;
+            output_length -= r;
+            r = _mutate_nonterm_4(steps, length, capacity, step, output, output_length);
+            output += r;
+            break;
+        }
+        
+        default: {
+            __builtin_unreachable();
+        }
+    }
+    
+    return (size_t) (output - original_output);
+}
+
+// This is the mutation function for non-terminal '(group 4)'
+static size_t _mutate_nonterm_11 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+    unsigned int mutate;
+    step_t rule;
+    unsigned char* original_output = output;
+    size_t s = *step;
+    
+    if (UNLIKELY(s >= capacity)) {
+        return output_length;
+    }
+    *step = s + 1;
+    
+    mutate = (s >= length);
+    
+    if (mutate) {
+        rule = (step_t) LINEAR_RANDOM(3);
+        steps[s] = rule;
+    } else {
+        rule = steps[s];
+    }
+    
+    switch (rule) {
+        case 0: {
+            break;
+        }
+        
+        case 1: {
+            if (UNLIKELY(sizeof(TERMINAL_15) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_15, sizeof(TERMINAL_15));
+            }
+            output += sizeof(TERMINAL_15);
+            break;
+        }
+        
+        case 2: {
+            if (UNLIKELY(sizeof(TERMINAL_14) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_14, sizeof(TERMINAL_14));
+            }
+            output += sizeof(TERMINAL_14);
             break;
         }
         
@@ -762,193 +999,22 @@ static size_t _mutate_nonterm_8 (unsigned int* steps, const size_t length, const
 }
 
 // This is the mutation function for non-terminal '(group 1)'
-static size_t _mutate_nonterm_9 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
-    unsigned int mutate, rule;
-    unsigned char* original_output = output;
-    size_t s = *step;
-    
-    if (UNLIKELY(s >= capacity)) {
-        return 0;
-    }
-    *step = s + 1;
-    
-    mutate = (s >= length);
-    
-    if (mutate) {
-        rule = internal_random() % 8;
-        steps[s] = rule;
-    } else {
-        rule = steps[s];
-    }
-    
-    switch (rule) {
-        case 0: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_9) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_9, sizeof(TERMINAL_9));
-            }
-            output += sizeof(TERMINAL_9);
-            break;
-        }
-        
-        case 1: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_10) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_10, sizeof(TERMINAL_10));
-            }
-            output += sizeof(TERMINAL_10);
-            break;
-        }
-        
-        case 2: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_11) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_11, sizeof(TERMINAL_11));
-            }
-            output += sizeof(TERMINAL_11);
-            break;
-        }
-        
-        case 3: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_12) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_12, sizeof(TERMINAL_12));
-            }
-            output += sizeof(TERMINAL_12);
-            break;
-        }
-        
-        case 4: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_13) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_13, sizeof(TERMINAL_13));
-            }
-            output += sizeof(TERMINAL_13);
-            break;
-        }
-        
-        case 5: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_14) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_14, sizeof(TERMINAL_14));
-            }
-            output += sizeof(TERMINAL_14);
-            break;
-        }
-        
-        case 6: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_15) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_15, sizeof(TERMINAL_15));
-            }
-            output += sizeof(TERMINAL_15);
-            break;
-        }
-        
-        case 7: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_2) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_2, sizeof(TERMINAL_2));
-            }
-            output += sizeof(TERMINAL_2);
-            break;
-        }
-        
-        default: {
-            __builtin_unreachable();
-        }
-    }
-    
-    return (size_t) (output - original_output);
-}
-
-// This is the mutation function for non-terminal '(group 3)'
-static size_t _mutate_nonterm_10 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
-    unsigned int mutate, rule;
-    unsigned char* original_output = output;
-    size_t s = *step;
-    
-    if (UNLIKELY(s >= capacity)) {
-        return 0;
-    }
-    *step = s + 1;
-    
-    mutate = (s >= length);
-    
-    if (mutate) {
-        rule = internal_random() % 3;
-        steps[s] = rule;
-    } else {
-        rule = steps[s];
-    }
-    
-    switch (rule) {
-        case 0: {
-            break;
-        }
-        
-        case 1: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_17) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_17, sizeof(TERMINAL_17));
-            }
-            output += sizeof(TERMINAL_17);
-            break;
-        }
-        
-        case 2: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_16) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_16, sizeof(TERMINAL_16));
-            }
-            output += sizeof(TERMINAL_16);
-            break;
-        }
-        
-        default: {
-            __builtin_unreachable();
-        }
-    }
-    
-    return (size_t) (output - original_output);
-}
-
-// This is the mutation function for non-terminal '(group 0)'
-static size_t _mutate_nonterm_14 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_15 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     size_t r;
-    unsigned int mutate, rule;
+    unsigned int mutate;
+    step_t rule;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
     *step = s + 1;
     
     mutate = (s >= length);
     
     if (mutate) {
-        rule = internal_random() % 10;
+        rule = (step_t) LINEAR_RANDOM(10);
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -956,71 +1022,71 @@ static size_t _mutate_nonterm_14 (unsigned int* steps, const size_t length, cons
     
     switch (rule) {
         case 0: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_7) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_7, sizeof(TERMINAL_7));
+            if (UNLIKELY(sizeof(TERMINAL_19) > output_length)) {
+                return output_length;
             }
-            output += sizeof(TERMINAL_7);
-            break;
-        }
-        
-        case 1: {
             if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_8) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_8, sizeof(TERMINAL_8));
-            }
-            output += sizeof(TERMINAL_8);
-            break;
-        }
-        
-        case 2: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_6) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_6, sizeof(TERMINAL_6));
-            }
-            output += sizeof(TERMINAL_6);
-            break;
-        }
-        
-        case 3: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_18) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_18, sizeof(TERMINAL_18));
-            }
-            output += sizeof(TERMINAL_18);
-            output_length -= sizeof(TERMINAL_18);
-            r = _mutate_nonterm_11(steps, length, capacity, step, output, output_length);
-            output += r;
-            break;
-        }
-        
-        case 4: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_19) > output_length)) {
-                    return output_length;
-                }
                 __builtin_memcpy(output, TERMINAL_19, sizeof(TERMINAL_19));
             }
             output += sizeof(TERMINAL_19);
-            output_length -= sizeof(TERMINAL_19);
+            break;
+        }
+        
+        case 1: {
+            if (UNLIKELY(sizeof(TERMINAL_20) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_20, sizeof(TERMINAL_20));
+            }
+            output += sizeof(TERMINAL_20);
+            break;
+        }
+        
+        case 2: {
+            if (UNLIKELY(sizeof(TERMINAL_18) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_18, sizeof(TERMINAL_18));
+            }
+            output += sizeof(TERMINAL_18);
+            break;
+        }
+        
+        case 3: {
+            if (UNLIKELY(sizeof(TERMINAL_16) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_16, sizeof(TERMINAL_16));
+            }
+            output += sizeof(TERMINAL_16);
+            output_length -= sizeof(TERMINAL_16);
             r = _mutate_nonterm_12(steps, length, capacity, step, output, output_length);
             output += r;
             break;
         }
         
-        case 5: {
+        case 4: {
+            if (UNLIKELY(sizeof(TERMINAL_17) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_2) > output_length)) {
-                    return output_length;
-                }
+                __builtin_memcpy(output, TERMINAL_17, sizeof(TERMINAL_17));
+            }
+            output += sizeof(TERMINAL_17);
+            output_length -= sizeof(TERMINAL_17);
+            r = _mutate_nonterm_13(steps, length, capacity, step, output, output_length);
+            output += r;
+            break;
+        }
+        
+        case 5: {
+            if (UNLIKELY(sizeof(TERMINAL_2) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
                 __builtin_memcpy(output, TERMINAL_2, sizeof(TERMINAL_2));
             }
             output += sizeof(TERMINAL_2);
@@ -1031,56 +1097,10 @@ static size_t _mutate_nonterm_14 (unsigned int* steps, const size_t length, cons
         }
         
         case 6: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_19) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_19, sizeof(TERMINAL_19));
+            if (UNLIKELY(sizeof(TERMINAL_17) > output_length)) {
+                return output_length;
             }
-            output += sizeof(TERMINAL_19);
-            output_length -= sizeof(TERMINAL_19);
-            r = _mutate_nonterm_4(steps, length, capacity, step, output, output_length);
-            output += r;
-            output_length -= r;
-            r = _mutate_nonterm_16(steps, length, capacity, step, output, output_length);
-            output += r;
-            break;
-        }
-        
-        case 7: {
-            r = _mutate_nonterm_5(steps, length, capacity, step, output, output_length);
-            output += r;
-            output_length -= r;
-            r = _mutate_nonterm_7(steps, length, capacity, step, output, output_length);
-            output += r;
-            output_length -= r;
-            r = _mutate_nonterm_8(steps, length, capacity, step, output, output_length);
-            output += r;
-            break;
-        }
-        
-        case 8: {
             if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_18) > output_length)) {
-                    return output_length;
-                }
-                __builtin_memcpy(output, TERMINAL_18, sizeof(TERMINAL_18));
-            }
-            output += sizeof(TERMINAL_18);
-            output_length -= sizeof(TERMINAL_18);
-            r = _mutate_nonterm_4(steps, length, capacity, step, output, output_length);
-            output += r;
-            output_length -= r;
-            r = _mutate_nonterm_15(steps, length, capacity, step, output, output_length);
-            output += r;
-            break;
-        }
-        
-        case 9: {
-            if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_17) > output_length)) {
-                    return output_length;
-                }
                 __builtin_memcpy(output, TERMINAL_17, sizeof(TERMINAL_17));
             }
             output += sizeof(TERMINAL_17);
@@ -1088,10 +1108,56 @@ static size_t _mutate_nonterm_14 (unsigned int* steps, const size_t length, cons
             r = _mutate_nonterm_5(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
-            r = _mutate_nonterm_7(steps, length, capacity, step, output, output_length);
+            r = _mutate_nonterm_17(steps, length, capacity, step, output, output_length);
+            output += r;
+            break;
+        }
+        
+        case 7: {
+            r = _mutate_nonterm_6(steps, length, capacity, step, output, output_length);
             output += r;
             output_length -= r;
             r = _mutate_nonterm_8(steps, length, capacity, step, output, output_length);
+            output += r;
+            output_length -= r;
+            r = _mutate_nonterm_9(steps, length, capacity, step, output, output_length);
+            output += r;
+            break;
+        }
+        
+        case 8: {
+            if (UNLIKELY(sizeof(TERMINAL_16) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_16, sizeof(TERMINAL_16));
+            }
+            output += sizeof(TERMINAL_16);
+            output_length -= sizeof(TERMINAL_16);
+            r = _mutate_nonterm_5(steps, length, capacity, step, output, output_length);
+            output += r;
+            output_length -= r;
+            r = _mutate_nonterm_16(steps, length, capacity, step, output, output_length);
+            output += r;
+            break;
+        }
+        
+        case 9: {
+            if (UNLIKELY(sizeof(TERMINAL_15) > output_length)) {
+                return output_length;
+            }
+            if (mutate) {
+                __builtin_memcpy(output, TERMINAL_15, sizeof(TERMINAL_15));
+            }
+            output += sizeof(TERMINAL_15);
+            output_length -= sizeof(TERMINAL_15);
+            r = _mutate_nonterm_6(steps, length, capacity, step, output, output_length);
+            output += r;
+            output_length -= r;
+            r = _mutate_nonterm_8(steps, length, capacity, step, output, output_length);
+            output += r;
+            output_length -= r;
+            r = _mutate_nonterm_9(steps, length, capacity, step, output, output_length);
             output += r;
             break;
         }
@@ -1105,23 +1171,22 @@ static size_t _mutate_nonterm_14 (unsigned int* steps, const size_t length, cons
 }
 
 // This is the mutation function for non-terminal '(terminal:0)'
-static size_t _mutate_nonterm_15 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_16 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     (void) steps;
     unsigned int mutate;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
-    *step = s + 1;
     mutate = (s >= length);
     
     
-    if (mutate) {
-        if (UNLIKELY(sizeof(TERMINAL_0) > output_length)) {
-            return output_length;
-        }
+    if (UNLIKELY(sizeof(TERMINAL_0) > output_length)) {
+        return output_length;
+    }
+    if (mutate) {   
         __builtin_memcpy(output, TERMINAL_0, sizeof(TERMINAL_0));
     }
     output += sizeof(TERMINAL_0);
@@ -1130,48 +1195,46 @@ static size_t _mutate_nonterm_15 (unsigned int* steps, const size_t length, cons
 }
 
 // This is the mutation function for non-terminal '(terminal:1)'
-static size_t _mutate_nonterm_17 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_18 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     (void) steps;
     unsigned int mutate;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
-    *step = s + 1;
     mutate = (s >= length);
     
     
-    if (mutate) {
-        if (UNLIKELY(sizeof(TERMINAL_20) > output_length)) {
-            return output_length;
-        }
-        __builtin_memcpy(output, TERMINAL_20, sizeof(TERMINAL_20));
+    if (UNLIKELY(sizeof(TERMINAL_21) > output_length)) {
+        return output_length;
     }
-    output += sizeof(TERMINAL_20);
+    if (mutate) {   
+        __builtin_memcpy(output, TERMINAL_21, sizeof(TERMINAL_21));
+    }
+    output += sizeof(TERMINAL_21);
     
     return (size_t) (output - original_output);
 }
 
 // This is the mutation function for non-terminal '(terminal:2)'
-static size_t _mutate_nonterm_16 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_17 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     (void) steps;
     unsigned int mutate;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
-    *step = s + 1;
     mutate = (s >= length);
     
     
-    if (mutate) {
-        if (UNLIKELY(sizeof(TERMINAL_1) > output_length)) {
-            return output_length;
-        }
+    if (UNLIKELY(sizeof(TERMINAL_1) > output_length)) {
+        return output_length;
+    }
+    if (mutate) {   
         __builtin_memcpy(output, TERMINAL_1, sizeof(TERMINAL_1));
     }
     output += sizeof(TERMINAL_1);
@@ -1180,24 +1243,23 @@ static size_t _mutate_nonterm_16 (unsigned int* steps, const size_t length, cons
 }
 
 // This is the mutation function for non-terminal '(terminal:3)'
-static size_t _mutate_nonterm_18 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_19 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     (void) steps;
     unsigned int mutate;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
-    *step = s + 1;
     mutate = (s >= length);
     
     
-    if (mutate) {
-        if (UNLIKELY(sizeof(uint8_t) > output_length)) {
-            return output_length;
-        }
-        _numberset_0(output);
+    if (UNLIKELY(sizeof(uint8_t) > output_length)) {
+        return output_length;
+    }
+    if (mutate) {   
+        _numberset_1(output);
     }
     output += sizeof(uint8_t);
     
@@ -1205,48 +1267,46 @@ static size_t _mutate_nonterm_18 (unsigned int* steps, const size_t length, cons
 }
 
 // This is the mutation function for non-terminal 'json::VALUE'
-static size_t _mutate_nonterm_19 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_20 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     (void) steps;
     size_t r;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
-    *step = s + 1;
     
-    r = _mutate_nonterm_14(steps, length, capacity, step, output, output_length);
+    r = _mutate_nonterm_15(steps, length, capacity, step, output, output_length);
     output += r;
     output_length -= r;
-    r = _mutate_nonterm_4(steps, length, capacity, step, output, output_length);
+    r = _mutate_nonterm_5(steps, length, capacity, step, output, output_length);
     output += r;
     
     return (size_t) (output - original_output);
 }
 
 // This is the mutation function for non-terminal 'json::OBJECT-SEQUENCE'
-static size_t _mutate_nonterm_11 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_12 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     (void) steps;
     size_t r;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
-    *step = s + 1;
     
     r = _mutate_nonterm_2(steps, length, capacity, step, output, output_length);
     output += r;
     output_length -= r;
-    r = _mutate_nonterm_4(steps, length, capacity, step, output, output_length);
+    r = _mutate_nonterm_5(steps, length, capacity, step, output, output_length);
     output += r;
     output_length -= r;
-    r = _mutate_nonterm_17(steps, length, capacity, step, output, output_length);
+    r = _mutate_nonterm_18(steps, length, capacity, step, output, output_length);
     output += r;
     output_length -= r;
-    r = _mutate_nonterm_19(steps, length, capacity, step, output, output_length);
+    r = _mutate_nonterm_20(steps, length, capacity, step, output, output_length);
     output += r;
     output_length -= r;
     r = _mutate_nonterm_0(steps, length, capacity, step, output, output_length);
@@ -1256,21 +1316,20 @@ static size_t _mutate_nonterm_11 (unsigned int* steps, const size_t length, cons
 }
 
 // This is the mutation function for non-terminal 'json::ARRAY-SEQUENCE'
-static size_t _mutate_nonterm_12 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_13 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     (void) steps;
     size_t r;
     unsigned char* original_output = output;
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
-    *step = s + 1;
     
-    r = _mutate_nonterm_14(steps, length, capacity, step, output, output_length);
+    r = _mutate_nonterm_15(steps, length, capacity, step, output, output_length);
     output += r;
     output_length -= r;
-    r = _mutate_nonterm_4(steps, length, capacity, step, output, output_length);
+    r = _mutate_nonterm_5(steps, length, capacity, step, output, output_length);
     output += r;
     output_length -= r;
     r = _mutate_nonterm_1(steps, length, capacity, step, output, output_length);
@@ -1280,7 +1339,7 @@ static size_t _mutate_nonterm_12 (unsigned int* steps, const size_t length, cons
 }
 
 // This is the mutation function for non-terminal 'json::DIGITS'
-static size_t _mutate_nonterm_13 (unsigned int* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_14 (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     (void) steps;
     size_t r;
     unsigned int mutate;
@@ -1288,21 +1347,20 @@ static size_t _mutate_nonterm_13 (unsigned int* steps, const size_t length, cons
     size_t s = *step;
     
     if (UNLIKELY(s >= capacity)) {
-        return 0;
+        return output_length;
     }
-    *step = s + 1;
     mutate = (s >= length);
     
     
-    if (mutate) {
-        if (UNLIKELY(sizeof(uint8_t) > output_length)) {
-            return output_length;
-        }
-        _numberset_1(output);
+    if (UNLIKELY(sizeof(uint8_t) > output_length)) {
+        return output_length;
+    }
+    if (mutate) {   
+        _numberset_2(output);
     }
     output += sizeof(uint8_t);
     output_length -= sizeof(uint8_t);
-    r = _mutate_nonterm_6(steps, length, capacity, step, output, output_length);
+    r = _mutate_nonterm_7(steps, length, capacity, step, output, output_length);
     output += r;
     
     return (size_t) (output - original_output);
@@ -1324,7 +1382,7 @@ void chameleon_seed (size_t new_seed) {
 #ifndef OMIT_CHAMELEON_INIT
 EXPORT_FUNCTION
 void chameleon_init (ChameleonWalk* walk, size_t capacity) {
-    walk->steps = malloc(capacity * sizeof(unsigned int));
+    walk->steps = malloc(capacity * sizeof(step_t));
     walk->length = 0;
     walk->capacity = capacity;
 }
@@ -1343,10 +1401,10 @@ EXPORT_FUNCTION
 size_t chameleon_mutate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
     size_t length = 0;
     if (LIKELY(walk->length > 0)) {
-        length = weighted_random(walk->length);
+        length = LINEAR_RANDOM(walk->length);
         walk->length = 0;
     }
-    return _mutate_nonterm_19(walk->steps, length, walk->capacity, &walk->length, output, output_length);
+    return _mutate_nonterm_20(walk->steps, length, walk->capacity, &walk->length, output, output_length);
 }
 #endif /* OMIT_CHAMELEON_MUTATE */
 
@@ -1354,6 +1412,6 @@ size_t chameleon_mutate (ChameleonWalk* walk, unsigned char* output, size_t outp
 EXPORT_FUNCTION
 size_t chameleon_generate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
     walk->length = 0;
-    return _mutate_nonterm_19(walk->steps, 0, walk->capacity, &walk->length, output, output_length);
+    return _mutate_nonterm_20(walk->steps, 0, walk->capacity, &walk->length, output, output_length);
 }
 #endif /* OMIT_CHAMELEON_GENERATE */
