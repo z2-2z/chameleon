@@ -81,6 +81,23 @@ static inline size_t internal_random (void) {
     return rand_state = x;
 }
 
+static inline size_t weighted_random (size_t n) {
+    if (UNLIKELY(n < 3)) {
+        return internal_random() % n;
+    }
+    
+    size_t part = n / 3;
+    size_t idx = internal_random() % part;
+    
+    switch (internal_random() % 4) {
+        case 0: return idx;
+        case 1:
+        case 2: return part + idx;
+        case 3: return 2 * part + idx;
+        default: __builtin_unreachable();
+    }
+}
+
 static const unsigned char TRIANGULAR_LOOKUP_TABLE[] = {
 0,
 1,1,
@@ -88,22 +105,19 @@ static const unsigned char TRIANGULAR_LOOKUP_TABLE[] = {
 3,3,3,3,
 4,4,4,4,4,
 5,5,5,5,5,5,
-6,6,6,6,6,6,6,
-7,7,7,7,7,7,7,7,
-8,8,8,8,8,8,8,8,8,
-9,9,9,9,9,9,9,9,9,9,
 };
+
 
 /***** TERMINALS *****/
 
-static const unsigned char TERMINAL_16[1] = {
-    0x2b
+static const unsigned char TERMINAL_9[1] = {
+    0x5c
 };
-static const unsigned char TERMINAL_20[1] = {
-    0x3a
+static const unsigned char TERMINAL_19[1] = {
+    0x5b
 };
-static const unsigned char TERMINAL_4[1] = {
-    0x2c
+static const unsigned char TERMINAL_3[1] = {
+    0x30
 };
 static const unsigned char TERMINAL_12[1] = {
     0x66
@@ -111,59 +125,59 @@ static const unsigned char TERMINAL_12[1] = {
 static const unsigned char TERMINAL_13[1] = {
     0x6e
 };
-static const unsigned char TERMINAL_8[4] = {
-    0x6e,0x75,0x6c,0x6c
+static const unsigned char TERMINAL_0[1] = {
+    0x7d
 };
-static const unsigned char TERMINAL_2[1] = {
-    0x22
+static const unsigned char TERMINAL_20[1] = {
+    0x3a
 };
-static const unsigned char TERMINAL_5[1] = {
-    0x2e
-};
-static const unsigned char TERMINAL_18[1] = {
-    0x7b
-};
-static const unsigned char TERMINAL_10[1] = {
-    0x2f
-};
-static const unsigned char TERMINAL_11[1] = {
-    0x62
-};
-static const unsigned char TERMINAL_21[1] = {
-    0x65
-};
-static const unsigned char TERMINAL_14[1] = {
-    0x72
-};
-static const unsigned char TERMINAL_7[5] = {
-    0x66,0x61,0x6c,0x73,0x65
-};
-static const unsigned char TERMINAL_3[1] = {
-    0x30
-};
-static const unsigned char TERMINAL_9[1] = {
-    0x5c
-};
-static const unsigned char TERMINAL_6[4] = {
-    0x74,0x72,0x75,0x65
-};
-static const unsigned char TERMINAL_19[1] = {
-    0x5b
-};
-static const unsigned char TERMINAL_22[1] = {
-    0x45
+static const unsigned char TERMINAL_16[1] = {
+    0x2b
 };
 static const unsigned char TERMINAL_17[1] = {
     0x2d
 };
+static const unsigned char TERMINAL_14[1] = {
+    0x72
+};
 static const unsigned char TERMINAL_15[1] = {
     0x74
+};
+static const unsigned char TERMINAL_4[1] = {
+    0x2c
+};
+static const unsigned char TERMINAL_5[1] = {
+    0x2e
+};
+static const unsigned char TERMINAL_8[4] = {
+    0x6e,0x75,0x6c,0x6c
+};
+static const unsigned char TERMINAL_22[1] = {
+    0x45
+};
+static const unsigned char TERMINAL_11[1] = {
+    0x62
+};
+static const unsigned char TERMINAL_10[1] = {
+    0x2f
+};
+static const unsigned char TERMINAL_7[5] = {
+    0x66,0x61,0x6c,0x73,0x65
+};
+static const unsigned char TERMINAL_21[1] = {
+    0x65
+};
+static const unsigned char TERMINAL_18[1] = {
+    0x7b
 };
 static const unsigned char TERMINAL_1[1] = {
     0x5d
 };
-static const unsigned char TERMINAL_0[1] = {
-    0x7d
+static const unsigned char TERMINAL_2[1] = {
+    0x22
+};
+static const unsigned char TERMINAL_6[4] = {
+    0x74,0x72,0x75,0x65
 };
 
 
@@ -171,38 +185,46 @@ static const unsigned char TERMINAL_0[1] = {
 
 #if !defined(OMIT_CHAMELEON_MUTATE) || !defined(OMIT_CHAMELEON_GENERATE)
 
-static size_t _mutate_nonterm_3 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_13 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_8 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_2 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_10 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_11 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_0 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
 static size_t _mutate_nonterm_4 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_18 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_19 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_10 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_3 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_2 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_8 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_15 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_12 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_11 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_13 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
 static size_t _mutate_nonterm_9 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_14 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_16 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_1 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_5 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_19 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
 static size_t _mutate_nonterm_7 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
 static size_t _mutate_nonterm_6 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_1 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_12 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_18 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
 static size_t _mutate_nonterm_17 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_15 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_0 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_5 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
-static size_t _mutate_nonterm_16 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_14 (unsigned int*, const size_t, const size_t, size_t*, unsigned char*, size_t);
 
 
-static inline void _numberset_3 (unsigned char* output) {
-    uint64_t value = 192ULL + (internal_random() % (223ULL - 192ULL + 1));
-    __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
-}
 static inline void _numberset_5 (unsigned char* output) {
     uint64_t value = 240ULL + (internal_random() % (247ULL - 240ULL + 1));
     __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
 }
+static inline void _numberset_4 (unsigned char* output) {
+    uint64_t value = 224ULL + (internal_random() % (239ULL - 224ULL + 1));
+    __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
+}
 static inline void _numberset_1 (unsigned char* output) {
     uint64_t value = 48ULL + (internal_random() % (57ULL - 48ULL + 1));
+    __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
+}
+static inline void _numberset_0 (unsigned char* output) {
+    uint64_t value = 128ULL + (internal_random() % (191ULL - 128ULL + 1));
+    __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
+}
+static inline void _numberset_3 (unsigned char* output) {
+    uint64_t value = 192ULL + (internal_random() % (223ULL - 192ULL + 1));
     __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
 }
 static void _numberset_2 (unsigned char* output) {
@@ -210,15 +232,15 @@ static void _numberset_2 (unsigned char* output) {
     
     switch (internal_random() % 3) {
         case 0: {
-            value = 93ULL + (internal_random() % (127ULL - 93ULL + 1));
-            break;
-        }
-        case 1: {
             value = 32ULL + (internal_random() % (33ULL - 32ULL + 1));
             break;
         }
-        case 2: {
+        case 1: {
             value = 35ULL + (internal_random() % (91ULL - 35ULL + 1));
+            break;
+        }
+        case 2: {
+            value = 93ULL + (internal_random() % (127ULL - 93ULL + 1));
             break;
         }
         default: {
@@ -228,16 +250,8 @@ static void _numberset_2 (unsigned char* output) {
     
     __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
 }
-static inline void _numberset_0 (unsigned char* output) {
-    uint64_t value = 128ULL + (internal_random() % (191ULL - 128ULL + 1));
-    __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
-}
 static inline void _numberset_6 (unsigned char* output) {
     uint64_t value = 49ULL + (internal_random() % (57ULL - 49ULL + 1));
-    __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
-}
-static inline void _numberset_4 (unsigned char* output) {
-    uint64_t value = 224ULL + (internal_random() % (239ULL - 224ULL + 1));
     __builtin_memcpy(output, (unsigned char*) &value, sizeof(uint8_t));
 }
 
@@ -694,7 +708,7 @@ static size_t _mutate_nonterm_8 (unsigned int* steps, const size_t length, const
     mutate = (s >= length);
     
     if (mutate) {
-        rule = TRIANGULAR_RANDOM(6);
+        rule = internal_random() % 3;
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -761,7 +775,7 @@ static size_t _mutate_nonterm_9 (unsigned int* steps, const size_t length, const
     mutate = (s >= length);
     
     if (mutate) {
-        rule = TRIANGULAR_RANDOM(36);
+        rule = internal_random() % 8;
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -878,7 +892,7 @@ static size_t _mutate_nonterm_10 (unsigned int* steps, const size_t length, cons
     mutate = (s >= length);
     
     if (mutate) {
-        rule = TRIANGULAR_RANDOM(6);
+        rule = internal_random() % 3;
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -934,7 +948,7 @@ static size_t _mutate_nonterm_14 (unsigned int* steps, const size_t length, cons
     mutate = (s >= length);
     
     if (mutate) {
-        rule = TRIANGULAR_RANDOM(55);
+        rule = internal_random() % 10;
         steps[s] = rule;
     } else {
         rule = steps[s];
@@ -1299,7 +1313,11 @@ static size_t _mutate_nonterm_13 (unsigned int* steps, const size_t length, cons
 #ifndef OMIT_CHAMELEON_SEED
 EXPORT_FUNCTION
 void chameleon_seed (size_t new_seed) {
-    rand_state = new_seed;
+    if (new_seed != 0) {
+        rand_state = new_seed;
+    } else {
+        rand_state = CHAMELEON_SEED;
+    }
 }
 #endif /* OMIT_CHAMELEON_SEED */
 
@@ -1325,7 +1343,7 @@ EXPORT_FUNCTION
 size_t chameleon_mutate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
     size_t length = 0;
     if (LIKELY(walk->length > 0)) {
-        length = internal_random() % walk->length;
+        length = weighted_random(walk->length);
         walk->length = 0;
     }
     return _mutate_nonterm_19(walk->steps, length, walk->capacity, &walk->length, output, output_length);
