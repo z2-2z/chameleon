@@ -4,11 +4,11 @@
 
 #include "chameleon.h"
 
-#define OUTPUT_LENGTH (4*4096)
+#define OUTPUT_LENGTH (4 * 4096)
 
 /*
-Generator: 89 865022478
-Mutator: 54 892742734 
+Generator: 87 320411551 invalid=(14/154243328) 
+Mutator: 73 572876150 invalid=(229/9868137) 
 */
 
 struct timespec diff_timespec(struct timespec *time1,

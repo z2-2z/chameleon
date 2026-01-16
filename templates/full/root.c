@@ -59,7 +59,8 @@
  #define CHAMELEON_SEED 1739639165216539016ULL
 #endif
 
-#define TRIANGULAR_RANDOM(n) (TRIANGULAR_LOOKUP_TABLE[internal_random() % n])
+#define TRIANGULAR_RANDOM(n) (TRIANGULAR_LOOKUP_TABLE[internal_random() % ((n * (n + 1)) >> 1)])
+#define LINEAR_RANDOM(n) (internal_random() % n)
 
 /***** TYPES *****/
 
@@ -148,7 +149,7 @@ EXPORT_FUNCTION
 size_t {{ prefix }}_mutate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
     size_t length = 0;
     if (LIKELY(walk->length > 0)) {
-        length = internal_random() % walk->length;
+        length = LINEAR_RANDOM(walk->length);
         walk->length = 0;
     }
     return _mutate_nonterm_{{ grammar.entrypoint().id() }}(walk->steps, length, walk->capacity, &walk->length, output, output_length);

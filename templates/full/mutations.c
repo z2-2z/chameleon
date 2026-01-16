@@ -35,10 +35,10 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (step_t* steps, const siz
     {%- match term %}
     {%- when crate::translator::Terminal::Numberset(id) %}
     {%- let numberset = grammar.numberset(**id) %}
-    if (mutate) {
-        if (UNLIKELY(sizeof({{ numberset.typ().c_type() }}) > output_length)) {
-            return output_length;
-        }
+    if (UNLIKELY(sizeof({{ numberset.typ().c_type() }}) > output_length)) {
+        return output_length;
+    }
+    if (mutate) {   
         _numberset_{{ id }}(output);
     }
     output += sizeof({{ numberset.typ().c_type() }});
@@ -46,10 +46,10 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (step_t* steps, const siz
     output_length -= sizeof({{ numberset.typ().c_type() }});
     {%- endif %}
     {%- when crate::translator::Terminal::Bytes(id) %}
-    if (mutate) {
-        if (UNLIKELY(sizeof(TERMINAL_{{ id }}) > output_length)) {
-            return output_length;
-        }
+    if (UNLIKELY(sizeof(TERMINAL_{{ id }}) > output_length)) {
+        return output_length;
+    }
+    if (mutate) {   
         __builtin_memcpy(output, TERMINAL_{{ id }}, sizeof(TERMINAL_{{ id }}));
     }
     output += sizeof(TERMINAL_{{ id }});
@@ -91,9 +91,9 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (step_t* steps, const siz
     
     if (mutate) {
         {% if set.is_triangular() -%}
-        rule = (step_t) TRIANGULAR_RANDOM({{ (set.rules().len() * (set.rules().len() + 1)) / 2 }});
+        rule = (step_t) TRIANGULAR_RANDOM({{ set.rules().len() }});
         {%- else -%}
-        rule = internal_random() % {{ set.rules().len() }};
+        rule = (step_t) LINEAR_RANDOM({{ set.rules().len() }});
         {%- endif %}
         steps[s] = rule;
     } else {
@@ -109,10 +109,10 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (step_t* steps, const siz
             {%- match term %}
             {%- when crate::translator::Terminal::Numberset(id) %}
             {%- let numberset = grammar.numberset(**id) %}
+            if (UNLIKELY(sizeof({{ numberset.typ().c_type() }}) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof({{ numberset.typ().c_type() }}) > output_length)) {
-                    return output_length;
-                }
                 _numberset_{{ id }}(output);
             }
             output += sizeof({{ numberset.typ().c_type() }});
@@ -120,10 +120,10 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (step_t* steps, const siz
             output_length -= sizeof({{ numberset.typ().c_type() }});
             {%- endif %}
             {%- when crate::translator::Terminal::Bytes(id) %}
+            if (UNLIKELY(sizeof(TERMINAL_{{ id }}) > output_length)) {
+                return output_length;
+            }
             if (mutate) {
-                if (UNLIKELY(sizeof(TERMINAL_{{ id }}) > output_length)) {
-                    return output_length;
-                }
                 __builtin_memcpy(output, TERMINAL_{{ id }}, sizeof(TERMINAL_{{ id }}));
             }
             output += sizeof(TERMINAL_{{ id }});

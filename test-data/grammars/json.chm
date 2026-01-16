@@ -6,7 +6,7 @@
 
 namespace json
 
-<VALUE> => <WS> (<STRING> || <NUMBER> || <OBJECT> || <ARRAY> || "true" || "false" || "null") <WS>
+<VALUE> => <WS> (<STRING> || <NUMBER> || <OBJECT> || <ARRAY> || ("true" || "false" || "null")) <WS>
 
 <OBJECT> => (
     "{" <WS> "}" ||

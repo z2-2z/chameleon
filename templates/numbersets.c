@@ -9,7 +9,7 @@ static inline void _numberset_{{ id }} (unsigned char* output) {
 static void _numberset_{{ id }} (unsigned char* output) {
     uint64_t value;
     
-    switch (internal_random() % {{ numberset.set().len() }}) {
+    switch (LINEAR_RANDOM({{ numberset.set().len() }})) {
         {%- for (i, range) in numberset.set().iter().enumerate() %}
         case {{ i }}: {
             value = {{ range.start() }}ULL + (internal_random() % ({{ range.end() }}ULL - {{ range.start() }}ULL + 1));
