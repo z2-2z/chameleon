@@ -16,11 +16,18 @@ struct Numbersets<'a> {
 }
 
 #[derive(askama::Template)]
+#[template(path = "head.c", escape = "none")]
+struct SourceHead<'a> {
+    grammar: &'a TranslatorGrammar,
+}
+
+#[derive(askama::Template)]
 #[template(path = "full/root.c", escape = "none")]
 struct Root<'a> {
     grammar: &'a TranslatorGrammar,
     numbersets: Numbersets<'a>,
     mutations: Mutations<'a>,
+    head: SourceHead<'a>,
     prefix: &'a str,
 }
 
@@ -37,6 +44,9 @@ pub fn render<P: Into<PathBuf>>(grammar: TranslatorGrammar, arg_prefix: Option<S
     } else {
         chameleon::DEFAULT_PREFIX
     };
+    let head = SourceHead {
+        grammar: &grammar,
+    };
     let numbersets = Numbersets {
         grammar: &grammar,
     };
@@ -47,6 +57,7 @@ pub fn render<P: Into<PathBuf>>(grammar: TranslatorGrammar, arg_prefix: Option<S
         grammar: &grammar,
         numbersets,
         mutations,
+        head,
         prefix,
     };
     let source = root.render()?;
