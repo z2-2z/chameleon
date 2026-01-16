@@ -162,6 +162,10 @@ impl RuleSet {
     }
     
     pub fn is_triangular(&self) -> bool {
+        if self.rules.len() <= 1 {
+            return false;
+        }
+        
         let mut sim_score = 0;
         let mut prev = usize::MAX;
         

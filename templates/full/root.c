@@ -63,8 +63,10 @@
 
 /***** TYPES *****/
 
+typedef {{ grammar.step_type() }} step_t;
+
 typedef struct {
-    {{ grammar.step_type() }}* steps;
+    step_t* steps;
     size_t length;
     size_t capacity;
 } ChameleonWalk;
@@ -80,25 +82,8 @@ static inline size_t internal_random (void) {
     x ^= x << 17;
     return rand_state = x;
 }
-
-static inline size_t weighted_random (size_t n) {
-    if (UNLIKELY(n < 3)) {
-        return internal_random() % n;
-    }
-    
-    size_t part = n / 3;
-    size_t idx = internal_random() % part;
-    
-    switch (internal_random() % 4) {
-        case 0: return idx;
-        case 1:
-        case 2: return part + idx;
-        case 3: return 2 * part + idx;
-        default: __builtin_unreachable();
-    }
-}
 {% if grammar.max_num_of_rules() > 0 %}
-static const unsigned char TRIANGULAR_LOOKUP_TABLE[] = {
+static const step_t TRIANGULAR_LOOKUP_TABLE[] = {
 {% for i in 1..=grammar.max_num_of_rules() %}
 {%- for j in 0..i -%}
 {{ i - 1 }},
@@ -122,7 +107,7 @@ static const unsigned char TERMINAL_{{ id }}[{{ content.len() }}] = {
 
 #if !defined(OMIT_CHAMELEON_MUTATE) || !defined(OMIT_CHAMELEON_GENERATE)
 {% for (id, _) in grammar.nonterminals() %}
-static size_t _mutate_nonterm_{{ id }} ({{ grammar.step_type() }}*, const size_t, const size_t, size_t*, unsigned char*, size_t);
+static size_t _mutate_nonterm_{{ id }} (step_t*, const size_t, const size_t, size_t*, unsigned char*, size_t);
 {%- endfor %}
 
 {{ numbersets }}
@@ -144,7 +129,7 @@ void {{ prefix }}_seed (size_t new_seed) {
 #ifndef OMIT_CHAMELEON_INIT
 EXPORT_FUNCTION
 void {{ prefix }}_init (ChameleonWalk* walk, size_t capacity) {
-    walk->steps = malloc(capacity * sizeof({{ grammar.step_type() }}));
+    walk->steps = malloc(capacity * sizeof(step_t));
     walk->length = 0;
     walk->capacity = capacity;
 }
@@ -163,7 +148,7 @@ EXPORT_FUNCTION
 size_t {{ prefix }}_mutate (ChameleonWalk* walk, unsigned char* output, size_t output_length) {
     size_t length = 0;
     if (LIKELY(walk->length > 0)) {
-        length = weighted_random(walk->length);
+        length = internal_random() % walk->length;
         walk->length = 0;
     }
     return _mutate_nonterm_{{ grammar.entrypoint().id() }}(walk->steps, length, walk->capacity, &walk->length, output, output_length);

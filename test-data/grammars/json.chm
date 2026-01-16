@@ -48,6 +48,7 @@ namespace json
 <UTF-8-CHAR-3> => u8 { 224..239 } u8 { 128..191 } u8 { 128..191 }
 <UTF-8-CHAR-4> => u8 { 240..247 } u8 { 128..191 } u8 { 128..191 } u8 { 128..191 }
 
+/*
 <WS> => (
     "" ||
     " " <WS> ||
@@ -55,6 +56,8 @@ namespace json
     "\r" <WS> ||
     "\t" <WS>
 )
+*/
+<WS> => ""
 
 <NUMBER> => <SIGN> <LEADING-DIGITS> <FRACTION> <EXPONENT>
 <SIGN> => "" || "-"

@@ -25,7 +25,7 @@ struct timespec diff_timespec(struct timespec *time1,
 int main (void) {
     ChameleonWalk walk;
     unsigned char* output = malloc(OUTPUT_LENGTH);
-    size_t total = 0;
+    size_t total = 0, r, tries = 0, invalid = 0;
     struct timespec start, end;
     
     chameleon_init(walk, 4 * 4096);
@@ -33,12 +33,15 @@ int main (void) {
     
     clock_gettime(CLOCK_MONOTONIC, &start);
     while (total < 10UL * 1024 * 1024 * 1024) {
-        total += chameleon_mutate(walk, output, OUTPUT_LENGTH);
+        r = chameleon_mutate(walk, output, OUTPUT_LENGTH);
+        tries++;
+        invalid += (r == OUTPUT_LENGTH);
+        total += r;
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
     
     struct timespec diff = diff_timespec(&end, &start);
-    printf("%lu %lu\n", diff.tv_sec, diff.tv_nsec);
+    printf("%lu %lu invalid=(%lu/%lu)\n", diff.tv_sec, diff.tv_nsec, invalid, tries);
     
     chameleon_destroy(walk);
     free(output);

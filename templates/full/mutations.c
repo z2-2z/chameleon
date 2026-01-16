@@ -1,19 +1,14 @@
 {% for set in grammar.rules() %}
 // This is the mutation function for non-terminal '{{ grammar.nonterminal(set.nonterm().id()) }}'
 {%- if set.rules().len() <= 1 %}
-static size_t _mutate_nonterm_{{ set.nonterm().id() }} ({{ grammar.step_type() }}* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_{{ set.nonterm().id() }} (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     {%- if set.has_no_symbols() %}
     (void) steps;
     (void) length;
+    (void) capacity;
+    (void) step;
     (void) output;
     (void) output_length;
-    size_t s = *step;
-    
-    if (UNLIKELY(s >= capacity)) {
-        return output_length;
-    }
-    *step = s + 1;
-    
     return 0;
     {%- else %}
     (void) steps;
@@ -29,7 +24,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} ({{ grammar.step_type() }
     if (UNLIKELY(s >= capacity)) {
         return output_length;
     }
-    *step = s + 1;
+    
     {%- if set.has_terms() %}
     mutate = (s >= length);
     {% endif %}
@@ -75,7 +70,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} ({{ grammar.step_type() }
     {%- endif %}
 }
 {%- else %}
-static size_t _mutate_nonterm_{{ set.nonterm().id() }} ({{ grammar.step_type() }}* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
+static size_t _mutate_nonterm_{{ set.nonterm().id() }} (step_t* steps, const size_t length, const size_t capacity, size_t* step, unsigned char* output, size_t output_length)  {
     {%- if set.has_no_symbols() %}
     (void) output_length;
     {%- endif %}
@@ -83,7 +78,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} ({{ grammar.step_type() }
     size_t r;
     {%- endif %}
     unsigned int mutate;
-    {{ grammar.step_type() }} rule;
+    step_t rule;
     unsigned char* original_output = output;
     size_t s = *step;
     
@@ -96,7 +91,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} ({{ grammar.step_type() }
     
     if (mutate) {
         {% if set.is_triangular() -%}
-        rule = ({{ grammar.step_type() }}) TRIANGULAR_RANDOM({{ (set.rules().len() * (set.rules().len() + 1)) / 2 }});
+        rule = (step_t) TRIANGULAR_RANDOM({{ (set.rules().len() * (set.rules().len() + 1)) / 2 }});
         {%- else -%}
         rule = internal_random() % {{ set.rules().len() }};
         {%- endif %}
