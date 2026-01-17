@@ -6,7 +6,7 @@ pub const DEFAULT_PREFIX: &str = "chameleon";
 
 #[repr(C)]
 struct ChameleonWalk {
-    steps: *mut u32,
+    steps: *mut u8,
     length: usize,
     capacity: usize,
 }
@@ -29,7 +29,7 @@ fn get_fn<T: Copy>(lib: &libloading::Library, name: String) -> Result<T> {
     Ok(*f.deref())
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Chameleon {
     seed: FunctionSeed,
     mutate: FunctionMutate,
@@ -65,7 +65,7 @@ impl Chameleon {
         }
     }
     
-    pub fn mutate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
+    pub fn mutate(&self, walk: &mut Vec<u8>, output: &mut Vec<u8>) -> bool {
         assert_ne!(self.mutate as usize, 0);
         
         let mut c = ChameleonWalk {
@@ -88,7 +88,7 @@ impl Chameleon {
         }
     }
     
-    pub fn generate(&self, walk: &mut Vec<u32>, output: &mut Vec<u8>) -> bool {
+    pub fn generate(&self, walk: &mut Vec<u8>, output: &mut Vec<u8>) -> bool {
         assert_ne!(self.generate as usize, 0);
         
         let mut c = ChameleonWalk {
@@ -112,7 +112,7 @@ impl Chameleon {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct BabyChameleon {
     seed: FunctionSeed,
     generate: FunctionBabyGenerate,
