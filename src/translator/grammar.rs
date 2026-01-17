@@ -297,15 +297,12 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         let entrypoint = self.nonterm_id(cfg.entrypoint().name());
         let numbersets = self.numbersets.into_iter().map(|(k, v)| (v, Numberset::from(k))).collect();
         let mut max_num_rules = 0;
-        let mut step_type = "uint8_t";
         
         for ruleset in &self.rules {
+            assert!(ruleset.rules().len() < 256, "Not yet supported");
+            
             if ruleset.is_triangular() {
                 max_num_rules = std::cmp::max(max_num_rules, ruleset.rules().len());
-            }
-            
-            if ruleset.rules().len() >= 256 {
-                step_type = "uint16_t";
             }
         }
         
@@ -316,7 +313,6 @@ impl<'a>  TranslatorGrammarConverter<'a> {
             nonterminals: reverse_id_map(self.nonterms),
             terminals: reverse_id_map(self.terminals),
             max_num_rules,
-            step_type,
         }
     }
 }
@@ -329,7 +325,6 @@ pub struct TranslatorGrammar {
     nonterminals: HashMap<usize, String>,
     terminals: HashMap<usize, Vec<u8>>,
     max_num_rules: usize,
-    step_type: &'static str,
 }
 
 impl TranslatorGrammar {
@@ -367,9 +362,5 @@ impl TranslatorGrammar {
     
     pub fn max_num_of_rules(&self) -> usize {
         self.max_num_rules
-    }
-    
-    pub fn step_type(&self) -> &str {
-        self.step_type
     }
 }

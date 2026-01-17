@@ -28,7 +28,7 @@
 
 /***** TYPES *****/
 
-typedef {{ grammar.step_type() }} step_t;
+typedef uint8_t step_t;
 
 typedef struct {
     step_t* steps;
