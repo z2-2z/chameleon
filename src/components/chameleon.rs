@@ -6,7 +6,7 @@ pub const DEFAULT_PREFIX: &str = "chameleon";
 
 #[repr(C)]
 struct ChameleonWalk {
-    steps: *mut u8,
+    steps: *mut u16,
     length: usize,
     capacity: usize,
 }
@@ -58,14 +58,12 @@ impl Chameleon {
     }
     
     pub fn seed(&self, seed: usize) {
-        assert_ne!(self.seed as usize, 0);
-        
         unsafe {
             (self.seed)(seed);
         }
     }
     
-    pub fn mutate(&self, walk: &mut Vec<u8>, output: &mut Vec<u8>) -> bool {
+    pub fn mutate(&self, walk: &mut Vec<u16>, output: &mut Vec<u8>) -> bool {
         assert_ne!(self.mutate as usize, 0);
         
         let mut c = ChameleonWalk {
@@ -88,7 +86,7 @@ impl Chameleon {
         }
     }
     
-    pub fn generate(&self, walk: &mut Vec<u8>, output: &mut Vec<u8>) -> bool {
+    pub fn generate(&self, walk: &mut Vec<u16>, output: &mut Vec<u8>) -> bool {
         assert_ne!(self.generate as usize, 0);
         
         let mut c = ChameleonWalk {
@@ -138,8 +136,6 @@ impl BabyChameleon {
     }
     
     pub fn seed(&self, seed: usize) {
-        assert_ne!(self.seed as usize, 0);
-        
         unsafe {
             (self.seed)(seed);
         }

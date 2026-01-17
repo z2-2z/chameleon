@@ -4,7 +4,7 @@ use libafl_bolts::prelude::{generic_hash_std, HasLen, OwnedSlice};
 
 #[derive(Serialize, Deserialize, Debug, Hash)]
 pub struct ChameleonInput<const W: usize = 1024, const B: usize = 4096> {
-    pub(crate) walk: Vec<u8>,
+    pub(crate) walk: Vec<u16>,
     pub(crate) bytes: Vec<u8>,
 }
 

@@ -28,7 +28,7 @@
 
 /***** TYPES *****/
 
-typedef uint8_t step_t;
+typedef uint16_t step_t;
 
 typedef struct {
     step_t* steps;
