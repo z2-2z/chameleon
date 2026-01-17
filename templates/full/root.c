@@ -29,9 +29,12 @@
 //  - chameleon_generate(): Generate a walk and its associated output according to the grammar rules
 //
 
+#include <stdlib.h>
+#include <stdint.h>
+
 {{ head }}
 
-/***** FUNCTIONS *****/
+/***** CODE *****/
 
 #if !defined(OMIT_CHAMELEON_MUTATE) || !defined(OMIT_CHAMELEON_GENERATE)
 {% for (id, _) in grammar.nonterminals() %}

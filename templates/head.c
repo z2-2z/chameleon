@@ -1,8 +1,3 @@
-/***** DEPENDENCIES *****/
-
-#include <stdlib.h>
-#include <stdint.h>
-
 /***** MACROS *****/
 
 #undef UNLIKELY

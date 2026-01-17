@@ -113,9 +113,9 @@ fn translate(entrypoint: Option<String>, verbose: bool, baby: bool, prefix: Opti
     let cfg = translator::TranslatorGrammar::converter().convert(&cfg);
     
     if baby {
-        translator::baby::render(cfg, prefix, output)?;
+        translator::templates::baby::render(cfg, prefix, output)?;
     } else {
-        translator::full::render(cfg, prefix, output)?;
+        translator::templates::full::render(cfg, prefix, output)?;
     }
     
     Ok(())

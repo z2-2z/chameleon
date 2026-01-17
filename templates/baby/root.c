@@ -21,9 +21,12 @@
 //  - chameleon_generate(): Generate an input according to the grammar rules
 //
 
+#include <stdlib.h>
+#include <stdint.h>
+
 {{ head }}
 
-/***** FUNCTIONS *****/
+/***** CODE *****/
 
 {% for (id, _) in grammar.nonterminals() %}
 static size_t _generate_nonterm_{{ id }} (unsigned char*, size_t);

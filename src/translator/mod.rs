@@ -1,5 +1,4 @@
 mod grammar;
 
-pub mod baby;
-pub mod full;
+pub mod templates;
 pub use grammar::*;
