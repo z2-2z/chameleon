@@ -299,7 +299,7 @@ impl<'a>  TranslatorGrammarConverter<'a> {
         let mut max_num_rules = 0;
         
         for ruleset in &self.rules {
-            assert!(ruleset.rules().len() < 256, "Not yet supported");
+            assert!(ruleset.rules().len() < 65536);
             
             if ruleset.is_triangular() {
                 max_num_rules = std::cmp::max(max_num_rules, ruleset.rules().len());
