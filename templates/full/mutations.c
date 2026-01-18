@@ -18,7 +18,7 @@ static size_t _mutate_nonterm_{{ set.nonterm().id() }} (step_t* steps, const siz
     {%- endif %}
     unsigned char* original_output = output;
     {%- if set.has_terms() %}
-    unsigned int mutate = (*step >= length);;
+    unsigned int mutate = (*step >= length);
     {%- endif %}
     
     {%- let rule = set.rules().iter().next().unwrap() %}
