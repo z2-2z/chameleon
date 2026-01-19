@@ -45,7 +45,7 @@ static inline size_t internal_random (void) {
     x ^= x << 13;
     x ^= x >> 7;
     x ^= x << 17;
-    return rand_state = x;
+    return (rand_state = x) >> 8;
 }
 {% if grammar.max_num_of_rules() > 0 %}
 static const step_t TRIANGULAR_LOOKUP_TABLE[] = {
