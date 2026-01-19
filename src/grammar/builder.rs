@@ -99,6 +99,8 @@ impl GrammarBuilder {
             let prev_size = cfg.grammar_size();
             
             cfg.remove_duplicate_rules();
+            cfg.terminal_substitution();
+            cfg.process_terminals();
             cfg.expand_unit_rules();
             cfg.prepare_gnf();
             cfg.convert_to_gnf();

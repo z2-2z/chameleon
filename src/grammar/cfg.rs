@@ -196,6 +196,117 @@ impl ContextFreeGrammar {
         }
     }
     
+    fn find_single_terminal_rules(&self) -> HashSet<NonTerminal> {
+        let mut counts: HashMap<&NonTerminal, usize> = HashMap::default();
+        let mut set: HashSet<&NonTerminal> = HashSet::default();
+        
+        for rule in &self.rules {
+            *counts.entry(rule.lhs()).or_insert(0) += 1;
+            
+            if rule.rhs().iter().all(|x| matches!(x, Symbol::Terminal(_))) {
+                set.insert(rule.lhs());
+            }
+        }
+        
+        set.iter().filter(|x| *counts.get(*x).unwrap() == 1).map(|x| (*x).clone()).collect()
+    }
+    
+    fn remove_single_rule(&mut self, nonterm: &NonTerminal) -> ProductionRule {
+        for i in 0..self.rules.len() {
+            if self.rules[i].lhs() == nonterm {
+                return self.rules.remove(i);
+            }
+        }
+        
+        unreachable!()
+    }
+    
+    fn replace_single_rule(&mut self, nonterm: NonTerminal, symbols: &[Symbol]) {
+        for rule in &mut self.rules {
+            for i in 0..rule.rhs.len() {
+                if let Symbol::NonTerminal(n) = &rule.rhs()[i] && n == &nonterm {
+                    rule.rhs.splice(i..i+1, symbols.to_owned());
+                }
+            }
+        }
+    }
+    
+    pub(super) fn terminal_substitution(&mut self) {
+        loop {
+            let old_len = self.rules.len();
+            
+            for nonterm in self.find_single_terminal_rules() {
+                let rule = self.remove_single_rule(&nonterm);
+                self.replace_single_rule(nonterm, rule.rhs());
+            }
+            
+            if self.rules.len() == old_len {
+                break;
+            }
+        }
+    }
+    
+    fn prune_empty_strings(&mut self) {
+        for rule in &mut self.rules {
+            if rule.rhs().len() <= 1 {
+                continue;
+            }
+            
+            let mut i = 0;
+            
+            while i < rule.rhs.len() {
+                if let Symbol::Terminal(Terminal::Bytes(content)) = &rule.rhs()[i] && content.is_empty() {
+                    rule.rhs.remove(i);
+                } else {
+                    i += 1;
+                }
+            }
+        }
+    }
+    
+    fn concat_terminals(&mut self) {
+        fn concat(symbols: &[Symbol]) -> Symbol {
+            let mut v = Vec::new();
+            
+            for sym in symbols {
+                let Symbol::Terminal(Terminal::Bytes(content)) = sym else { unreachable!() };
+                v.extend_from_slice(content);
+            }
+            
+            Symbol::Terminal(Terminal::Bytes(v))
+        }
+        
+        for rule in &mut self.rules {
+            let mut i = 0;
+            
+            while i < rule.rhs.len() {
+                if let Symbol::Terminal(Terminal::Bytes(_)) = &rule.rhs[i] {
+                    let mut j = i;
+                    
+                    while j < rule.rhs.len() {
+                        if let Symbol::Terminal(Terminal::Bytes(_)) = &rule.rhs[j] {
+                            j += 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    if j > i + 1 {
+                        let new = concat(&rule.rhs()[i..j]);
+                        rule.rhs.splice(i..j, [new]);
+                    }
+                }
+                
+                i += 1;
+            }
+        }
+    }
+    
+    pub(super) fn process_terminals(&mut self) {
+        self.prune_empty_strings();
+        self.concat_terminals();
+    }
+    
     pub(super) fn prepare_gnf(&mut self) {
         let mut nonterms: NoHashMap<u64, NonTerminal> = NoHashMap::default();
         let hasher = RandomState::new();

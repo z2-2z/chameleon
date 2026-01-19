@@ -7,7 +7,7 @@
 #define OUTPUT_LENGTH (4*4096)
 
 /*
-Generator: 86 401045279 ~124 MiB/s
+Generator: 86 401045279 ~128 MiB/s
 */
 
 struct timespec diff_timespec(struct timespec *time1,
